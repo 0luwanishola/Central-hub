@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" hx-head="append" hx-ext="response-targets">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Central Hub{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script defer src="https://unpkg.com/htmx.org/dist/ext/response-targets.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        },
+                        surface: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .font-sans { font-family: 'Inter', system-ui, sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        .theme-choice { color: #475569; }
+        .dark .theme-choice { color: #cbd5e1; }
+        .theme-choice[aria-pressed="true"] {
+            background: #fff;
+            color: #0f172a;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+        }
+        .dark .theme-choice[aria-pressed="true"] {
+            background: #334155;
+            color: #fff;
+        }
+
+        .sidebar-transition {
+            transition: transform 0.2s ease-in-out, width 0.2s ease-in-out;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar-open { transform: translateX(0) !important; }
+            .sidebar-closed { transform: translateX(-100%) !important; }
+        }
+
+        .tool-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+
+        .setting-item:hover {
+            background-color: rgba(14, 165, 233, 0.05);
+        }
+
+        /* Emitted by pdftools.core.error_response() so a rejected upload shows
+           up inside the tool panel. Not a Tailwind class, so it is defined here. */
+        .pdf-error {
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            font-size: 0.875rem;
+            color: #991b1b;
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+        }
+        .dark .pdf-error {
+            color: #fecaca;
+            background-color: rgba(127, 29, 29, 0.25);
+            border-color: rgba(153, 27, 27, 0.6);
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body class="font-sans bg-surface-50 dark:bg-surface-950 text-surface-900 dark:text-surface-50 min-h-screen">
+<div class="flex min-h-screen">
+    <!-- Sidebar lives outside #main-content so htmx content swaps never duplicate it. -->
+    {% include "partials/sidebar.html" %}
+
+    <main id="main-content" class="flex-1 min-w-0 md:ml-0">
+        <!-- Top bar -->
+        <header class="sticky top-0 z-20 bg-white/80 dark:bg-surface-900/80 backdrop-blur-sm border-b border-surface-200 dark:border-surface-800">
+            <div class="flex items-center justify-between px-4 py-3 md:px-6">
+                <button class="md:hidden p-2 rounded-lg text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800" onclick="toggleSidebar()">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                <div class="flex-1 md:hidden"></div>
+                <div class="flex items-center gap-4">
+                    <!-- Theme toggle -->
+                    <button id="theme-toggle" type="button" aria-label="Toggle color theme" aria-pressed="false" class="p-2 rounded-lg text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors" onclick="toggleTheme()">
+                        <svg id="sun-icon" class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        <svg id="moon-icon" class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Only this region is replaced by htmx. Pages contribute a fragment here. -->
+        {% block main_content %}{% endblock %}
+    </main>
+</div>
+
+<script>
+    // Theme
+    function updateThemeControls(theme) {
+        document.querySelectorAll('[data-theme-choice]').forEach(function(button) {
+            button.setAttribute('aria-pressed', String(button.dataset.themeChoice === theme));
+        });
+
+        const toggle = document.getElementById('theme-toggle');
+        if (toggle) {
+            const isDark = theme === 'dark';
+            toggle.setAttribute('aria-pressed', String(isDark));
+            toggle.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+        }
+    }
+
+    function setTheme(theme) {
+        const selected = theme === 'dark' ? 'dark' : 'light';
+        document.documentElement.classList.toggle('dark', selected === 'dark');
+        localStorage.setItem('theme', selected);
+        updateThemeControls(selected);
+    }
+
+    function initTheme() {
+        const stored = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const selected = stored === 'dark' || (!stored && prefersDark) ? 'dark' : 'light';
+        document.documentElement.classList.toggle('dark', selected === 'dark');
+        updateThemeControls(selected);
+    }
+    initTheme();
+
+    function toggleTheme() {
+        setTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark');
+    }
+
+    document.body.addEventListener('htmx:afterSwap', function() {
+        updateThemeControls(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    });
+
+    // Mobile sidebar
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        sidebar.classList.toggle('sidebar-open');
+        sidebar.classList.toggle('sidebar-closed');
+        overlay.classList.toggle('hidden');
+    }
+
+    // Close sidebar on link click (mobile)
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.sidebar-link') && window.innerWidth < 768) {
+            toggleSidebar();
+        }
+    });
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

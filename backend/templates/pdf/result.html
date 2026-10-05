@@ -1,0 +1,20 @@
+{# Shown in the tool panel after a PDF tool finishes. #}
+<div class="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/40">
+    <div class="flex items-start gap-3">
+        <span class="text-xl leading-none" aria-hidden="true">✅</span>
+        <div class="flex-1">
+            <p class="font-semibold text-green-900 dark:text-green-100">Done</p>
+            <p class="mt-0.5 text-sm text-green-800 dark:text-green-200">
+                Your file is ready. The link works once and expires in 10 minutes.
+            </p>
+            <a href="/api/pdf/download/{{ token }}"
+               download="{{ download_name }}"
+               class="mt-3 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"></path>
+                </svg>
+                Download {{ download_name }}
+            </a>
+        </div>
+    </div>
+</div>

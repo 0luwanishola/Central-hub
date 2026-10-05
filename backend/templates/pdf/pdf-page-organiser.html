@@ -1,0 +1,22 @@
+{# Organise pages - reorder, rotate and delete in one pass. #}
+{% from "pdf/_macros.html" import page, text_field %}
+{% call page(tool, multiple, accept) %}
+{{ text_field(
+    'pages',
+    'Pages to keep, in order',
+    '1, 3, 2, 5-7',
+    'The list is the new order, so "3,1,2" puts page 3 first. Anything you leave out is deleted.',
+) }}
+{{ text_field(
+    'rotate',
+    'Rotations (optional)',
+    '1=90, 3=-90',
+    'Page numbers and degrees, separated by commas. Use 90, 180 or 270, with a minus sign to turn anticlockwise.',
+    required=False,
+) }}
+<div class="rounded-lg bg-surface-50 dark:bg-surface-800/60 p-4 text-sm text-surface-600 dark:text-surface-300">
+    Keeping, reordering and deleting are one step here: the page list above
+    <em>is</em> the result. To delete a page, leave it out. To move one, change
+    where it sits.
+</div>
+{% endcall %}

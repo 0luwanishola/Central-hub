@@ -1,0 +1,21 @@
+<div class="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:py-12">
+    <header class="mb-8">
+        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-primary-600 dark:text-primary-400">Personal preferences</p>
+        <h1 class="mt-2 text-3xl font-semibold tracking-tight text-surface-900 dark:text-white">Settings</h1>
+        <p class="mt-2 text-sm leading-6 text-surface-500 dark:text-surface-400">Choose how Central Hub looks on this device.</p>
+    </header>
+
+    <section aria-labelledby="appearance-heading" class="rounded-2xl border border-surface-200 bg-white p-6 dark:border-surface-800 dark:bg-surface-900">
+        <div class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 id="appearance-heading" class="text-lg font-semibold text-surface-900 dark:text-white">Appearance</h2>
+                <p class="mt-1 text-sm text-surface-500 dark:text-surface-400">Choose a light or dark colour theme.</p>
+            </div>
+            <div role="group" aria-label="Choose appearance" class="inline-flex w-fit rounded-xl bg-surface-100 p-1 dark:bg-surface-800">
+                <button type="button" data-theme-choice="light" aria-pressed="false" onclick="setTheme('light')" class="theme-choice rounded-lg px-4 py-2 text-sm font-medium transition">Light</button>
+                <button type="button" data-theme-choice="dark" aria-pressed="false" onclick="setTheme('dark')" class="theme-choice rounded-lg px-4 py-2 text-sm font-medium transition">Dark</button>
+            </div>
+        </div>
+        <p class="mt-5 border-t border-surface-200 pt-4 text-xs text-surface-500 dark:border-surface-800 dark:text-surface-400">Your choice is saved in this browser and applies across the app.</p>
+    </section>
+</div>

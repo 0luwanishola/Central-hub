@@ -1,0 +1,28 @@
+# Direct dependencies. Transitive deps are resolved by pip.
+# Note: Starlette >= 1.0 removed the old Jinja2Templates.TemplateResponse(name, context)
+# signature that main.py previously used. Do not pin FastAPI/Starlette below that
+# without reverting the TemplateResponse calls.
+fastapi==0.142.2
+uvicorn[standard]==0.54.0
+jinja2==3.1.6
+
+# Third-party provider integrations
+httpx==0.28.1
+python-dotenv==1.2.1
+
+# PDF tools (backend/pdftools/)
+#   pypdf       - read and write PDFs: merge/split/rotate/encrypt/metadata
+#   reportlab   - builds the overlay pages used for stamps, watermarks, numbering
+#   pypdfium2   - renders pages to PNG/JPEG; ships its own binary, so no
+#                 system-level PDF renderer is needed
+#   pillow      - required by pypdfium2 to write rendered images. It arrives via
+#                 reportlab, but is listed explicitly because we import it directly.
+pypdf==6.19.0
+reportlab==5.0.1
+pypdfium2==5.13.0
+pillow==12.3.0
+
+# Parses the multipart upload bodies the PDF tools POST.
+# Without it, request.form() raises at runtime rather than at import, so a fresh
+# checkout looks healthy until someone uploads a file.
+python-multipart==0.0.32

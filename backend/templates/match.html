@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+
+{% block title %}{% if match %}{{ match.home.name }} vs {{ match.away.name }} - LiveScore{% else %}Match - LiveScore{% endif %} - Central Hub{% endblock %}
+
+{% block main_content %}
+{% include "match_content.html" %}
+{% endblock %}

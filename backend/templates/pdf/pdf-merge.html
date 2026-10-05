@@ -1,0 +1,8 @@
+{# Merge PDFs - combine several documents in order. #}
+{% from "pdf/_macros.html" import page %}
+{% call page(tool, multiple, accept) %}
+<div class="rounded-lg bg-surface-50 dark:bg-surface-800/60 p-4 text-sm text-surface-600 dark:text-surface-300">
+    Choose two or more PDFs. They are joined in the order you select them, and
+    every page is kept.
+</div>
+{% endcall %}
