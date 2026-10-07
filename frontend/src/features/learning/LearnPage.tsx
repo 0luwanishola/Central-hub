@@ -33,6 +33,7 @@ export function LearnPage() {
   const [trackId, setTrackId] = useState<LearningTrackId>("python");
   const [level, setLevel] = useState(0);
   const [code, setCode] = useState("");
+  const [resetSnapshot, setResetSnapshot] = useState<string | null>(null);
   const [draftStorageAvailable, setDraftStorageAvailable] = useState(true);
   const [hintsRevealed, setHintsRevealed] = useState(0);
   const codeMutation = useMutation({
@@ -63,11 +64,13 @@ export function LearnPage() {
     setCode(draft.code);
     setDraftStorageAvailable(draft.storageAvailable);
     setHintsRevealed(0);
+    setResetSnapshot(null);
     codeMutation.reset();
   }, [trackId, level, session?.learner_id]);
 
-  function updateCode(value: string) {
+  function updateCode(value: string, keepResetUndo = false) {
     setCode(value);
+    if (!keepResetUndo) setResetSnapshot(null);
     if (codeMutation.data || codeMutation.error) codeMutation.reset();
     if (!session) return;
     try {
@@ -92,6 +95,21 @@ export function LearnPage() {
   function checkCode() {
     if (!session || !track || !challenge || codeMutation.isPending) return;
     codeMutation.mutate({ learner_id: session.learner_id, track: trackId, level, code });
+  }
+
+  function resetStarterCode() {
+    if (!challenge || code === challenge.coding.starter_code || codeMutation.isPending || result?.correct) return;
+    setResetSnapshot(code);
+    updateCode(challenge.coding.starter_code, true);
+    codeMutation.reset();
+  }
+
+  function undoStarterReset() {
+    if (resetSnapshot === null) return;
+    const previousCode = resetSnapshot;
+    setResetSnapshot(null);
+    updateCode(previousCode, true);
+    codeMutation.reset();
   }
 
   function goNext() {
@@ -200,7 +218,10 @@ export function LearnPage() {
           <div className="code-workspace">
             <div className="code-workspace-heading">
               <label htmlFor="quest-code">{coding.language === "python" ? "Python editor" : "SQL editor"}</label>
-              <button type="button" className="text-button" onClick={() => { updateCode(coding.starter_code); codeMutation.reset(); }} disabled={codeMutation.isPending || Boolean(result?.correct)}>Reset starter code</button>
+              <div className="code-workspace-controls">
+                {resetSnapshot !== null && <button type="button" className="text-button" onClick={undoStarterReset}>Undo reset</button>}
+                <button type="button" className="text-button" onClick={resetStarterCode} disabled={codeMutation.isPending || Boolean(result?.correct) || code === coding.starter_code}>Reset starter code</button>
+              </div>
             </div>
             <SyntaxEditor
               id="quest-code"

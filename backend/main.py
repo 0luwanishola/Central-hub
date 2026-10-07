@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import os
 from contextlib import asynccontextmanager
@@ -58,6 +59,45 @@ PROVIDER_LABELS = {
 }
 
 
+class RequestBodyTooLarge(Exception):
+    """Raised before an oversized request body is handed to a form parser."""
+
+
+class RequestBodyLimitMiddleware:
+    """Count incoming request bytes before multipart uploads can be spooled."""
+
+    def __init__(self, app, max_bytes: int):
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        headers = {key.lower(): value for key, value in scope.get("headers", [])}
+        raw_length = headers.get(b"content-length")
+        try:
+            declared_length = int(raw_length) if raw_length else None
+        except ValueError:
+            declared_length = None
+
+        received = 0
+
+        async def limited_receive():
+            nonlocal received
+            if declared_length is not None and declared_length > self.max_bytes:
+                raise RequestBodyTooLarge()
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > self.max_bytes:
+                    raise RequestBodyTooLarge()
+            return message
+
+        await self.app(scope, limited_receive, send)
+
+
 def provider_name(provider) -> str:
     return PROVIDER_LABELS.get(getattr(provider, "PREFIX", ""), "the provider")
 
@@ -111,9 +151,17 @@ async def lifespan(app: FastAPI):
     """One shared HTTP client for outbound provider calls."""
     learning.initialize_learning_store()
     app.state.http = httpx.AsyncClient(timeout=15.0)
+    async def expire_pdf_files():
+        while True:
+            await asyncio.sleep(60)
+            pdftools.cleanup_stale()
+
+    cleanup_task = asyncio.create_task(expire_pdf_files())
     try:
         yield
     finally:
+        cleanup_task.cancel()
+        await asyncio.gather(cleanup_task, return_exceptions=True)
         await app.state.http.aclose()
 
 
@@ -142,6 +190,12 @@ class LearningCodeRequest(BaseModel):
 frontend_origins = os.getenv(
     "FRONTEND_ORIGINS",
     "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173",
+)
+# The form parser spools uploaded files before the PDF layer can enforce its
+# per-file budget. Limit the complete request body first, with room for form fields.
+app.add_middleware(
+    RequestBodyLimitMiddleware,
+    max_bytes=pdftools.MAX_UPLOAD_BYTES + 1024 * 1024,
 )
 app.add_middleware(
     CORSMiddleware,
@@ -566,7 +620,18 @@ def _pdf_wants_json(request: Request) -> bool:
 def _pdf_error(request: Request, message: str, status_code: int = 400):
     if _pdf_wants_json(request):
         return JSONResponse({"detail": message}, status_code=status_code)
-    return pdftools.error_response(message)
+    response = pdftools.error_response(message)
+    response.status_code = status_code
+    return response
+
+
+@app.exception_handler(RequestBodyTooLarge)
+async def request_body_too_large(request: Request, _exc: RequestBodyTooLarge):
+    return _pdf_error(
+        request,
+        "That request is too large. The limit is 100 MB for files, plus up to 1 MB for form data.",
+        status_code=413,
+    )
 
 
 def _pdf_result(request: Request, download_name: str, token: str):
@@ -770,7 +835,7 @@ async def run_pdf_tool(tool_id: str, request: Request):
     try:
         saved = await pdftools.save_uploads(uploads, inputs_dir, suffixes)
         output = result_dir / "result"
-        download_name = handler(saved, params, output)
+        download_name = await run_in_threadpool(handler, saved, params, output)
 
         # A tool returns a name, so the extension drives the content type: the split
         # tool produces a ZIP, everything else a PDF.

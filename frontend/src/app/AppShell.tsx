@@ -148,7 +148,7 @@ export function AppShell() {
             <Icon name="activities" className="nav-icon" /><span>Activities</span><span className="nav-count">3</span>
           </NavLink>
           <NavLink to="/learn" className={({ isActive }) => `nav-item ${isActive ? "nav-active" : ""}`} onClick={() => closeMenu(false)}>
-            <Icon name="code" className="nav-icon" /><span>Code Quest</span><span className="nav-count">10</span>
+            <Icon name="code" className="nav-icon" /><span>Code Quest</span>
           </NavLink>
           <NavLink to="/notes" className={({ isActive }) => `nav-item ${isActive ? "nav-active" : ""}`} onClick={() => closeMenu(false)}>
             <Icon name="notes" className="nav-icon" /><span>Quick notes</span>

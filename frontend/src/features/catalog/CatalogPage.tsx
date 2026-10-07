@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import type { FormEvent } from "react";
+import { useMemo, useRef, useState } from "react";
+import type { FormEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
 import { displayCategory } from "../../app/AppShell";
@@ -72,6 +72,8 @@ export function CatalogPage({ showAll = false }: { showAll?: boolean }) {
     const heading = categoryId ? displayCategory(categoryId) : "Digital tools";
     const description = categoryId ? descriptions[categoryId] ?? "A focused set of tools for everyday tasks." : "Browse quick browser utilities, document tools, and connected services.";
     const query = search ? `?search=${encodeURIComponent(search)}` : "";
+    const availableTools = filteredTools.filter((tool) => tool.ready);
+    const unavailableTools = filteredTools.filter((tool) => !tool.ready);
     return (
       <section className="page-wrap">
         <div className="page-heading-row">
@@ -86,7 +88,16 @@ export function CatalogPage({ showAll = false }: { showAll?: boolean }) {
           <SearchInput value={search} onChange={updateSearch} />
         </div>
         <p className="catalog-result-count" role="status" aria-live="polite">{filteredTools.length} {filteredTools.length === 1 ? "tool" : "tools"}{search ? ` matching “${search}”` : ""}</p>
-        {filteredTools.length ? <ToolGrid tools={filteredTools} /> : <div className="empty-state compact"><h2>No matching tools</h2><p>Try another search, or choose a different collection.</p>{search && <button className="text-button" type="button" onClick={() => updateSearch("")}>Clear search</button>}</div>}
+        {filteredTools.length ? <>
+          {availableTools.length > 0 && <section className="catalog-group" aria-labelledby="available-tools-heading">
+            <div className="section-heading catalog-group-heading"><div><span className="eyebrow">Ready to use</span><h2 id="available-tools-heading">Available now</h2></div><span>{availableTools.length}</span></div>
+            <ToolGrid tools={availableTools} />
+          </section>}
+          {unavailableTools.length > 0 && <section className="catalog-group" aria-labelledby="upcoming-tools-heading">
+            <div className="section-heading catalog-group-heading"><div><span className="eyebrow">Not ready yet</span><h2 id="upcoming-tools-heading">Needs setup or development</h2><p>Some tools need an optional program; others are still being built.</p></div><span>{unavailableTools.length}</span></div>
+            <ToolGrid tools={unavailableTools} />
+          </section>}
+        </> : <div className="empty-state compact"><h2>No matching tools</h2><p>Try another search, or choose a different collection.</p>{search && <button className="text-button" type="button" onClick={() => updateSearch("")}>Clear search</button>}</div>}
       </section>
     );
   }
@@ -157,10 +168,32 @@ function SearchInput({ value, onChange }: { value: string; onChange: (value: str
 function HomeSearch({ tools }: { tools: Tool[] }) {
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
   const normalized = query.trim().toLowerCase();
   const matchingDestinations = normalized ? destinations.filter((item) => `${item.label} ${item.detail} ${item.terms}`.toLowerCase().includes(normalized)) : [];
   const matchingTools = normalized ? tools.filter((tool) => `${tool.name} ${tool.description} ${tool.category}`.toLowerCase().includes(normalized)).slice(0, 5) : [];
   const hasQuery = Boolean(normalized);
+  const resultCount = matchingDestinations.length + matchingTools.length;
+
+  function focusResult(index: number) {
+    resultsRef.current?.querySelectorAll<HTMLAnchorElement>("a[href]")[index]?.focus();
+  }
+
+  function moveResultFocus(event: ReactKeyboardEvent<HTMLAnchorElement>, index: number) {
+    if (event.key === "ArrowDown" && index < resultCount - 1) {
+      event.preventDefault();
+      focusResult(index + 1);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      if (index === 0) inputRef.current?.focus();
+      else focusResult(index - 1);
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      inputRef.current?.focus();
+    }
+  }
+
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (matchingDestinations[0]) navigate(matchingDestinations[0].to);
@@ -171,16 +204,17 @@ function HomeSearch({ tools }: { tools: Tool[] }) {
   }
   return <form className="home-search-wrap" role="search" onSubmit={submitSearch}>
     <div className="home-search-control">
-      <label className="search-field home-search"><Icon name="search" /><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search tools, games, Python, notes..." aria-label="Search Central Hub" aria-describedby="home-search-help" /></label>
+      <label className="search-field home-search"><Icon name="search" /><input ref={inputRef} type="search" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "ArrowDown" && resultCount > 0) { event.preventDefault(); focusResult(0); } }} placeholder="Search tools, games, Python, notes..." aria-label="Search Central Hub" aria-describedby="home-search-help" /></label>
       {query && <button className="search-clear home-search-clear" type="button" aria-label="Clear Central Hub search" onClick={() => setQuery("")}><Icon name="close" /></button>}
-      <button className="button button-primary home-search-submit" type="submit">Search</button>
+      <button className="button button-primary home-search-submit" type="submit" disabled={!resultCount}>{hasQuery ? "Open first match" : "Search"}</button>
     </div>
-    <span id="home-search-help" className="sr-only">Search tools and hub sections by name or task.</span>
+    <span id="home-search-help" className="sr-only">Search tools and hub sections by name or task. Use the arrow keys to move through suggestions; Enter opens the focused result.</span>
     {hasQuery && <span className="sr-only" role="status" aria-live="polite">Showing {matchingDestinations.length + matchingTools.length} results.</span>}
-    {hasQuery && <div className="home-search-results" role="region" aria-label="Search results">
+    {hasQuery && <div ref={resultsRef} className="home-search-results" role="region" aria-label="Search results">
       {!matchingDestinations.length && !matchingTools.length ? <p>No results for “{query}”. Try a tool or section name.</p> : <>
-        {matchingDestinations.map((item) => <Link key={item.to} to={item.to} className="home-search-result"><span><strong>{item.label}</strong><small>{item.detail}</small></span><Icon name="arrow" /></Link>)}
-        {matchingTools.map((tool) => <Link key={tool.id} to={`/tool/${tool.id}`} className="home-search-result" onClick={() => rememberTool(tool.id)}><span><strong>{tool.name}</strong><small>{displayCategory(tool.category)} · {tool.description}</small></span><Icon name="arrow" /></Link>)}
+        <p className="home-search-guidance">Use ↑ and ↓ to move through suggestions. Press Enter to open one.</p>
+        {matchingDestinations.map((item, index) => <Link key={item.to} to={item.to} className="home-search-result" onKeyDown={(event) => moveResultFocus(event, index)}><span><strong>{item.label}</strong><small>{item.detail}</small></span><Icon name="arrow" /></Link>)}
+        {matchingTools.map((tool, index) => <Link key={tool.id} to={`/tool/${tool.id}`} className="home-search-result" onClick={() => rememberTool(tool.id)} onKeyDown={(event) => moveResultFocus(event, matchingDestinations.length + index)}><span><strong>{tool.name}</strong><small>{displayCategory(tool.category)} · {tool.description}</small></span><Icon name="arrow" /></Link>)}
       </>}
     </div>}
   </form>;
@@ -191,11 +225,12 @@ function ToolGrid({ tools }: { tools: Tool[] }) {
 }
 
 function ToolCard({ tool }: { tool: Tool }) {
+  const availability = tool.ready ? "Ready" : tool.requires ? "Needs setup" : "Planned";
   return (
     <Link to={`/tool/${tool.id}`} className="tool-card" onClick={() => rememberTool(tool.id)}>
       <span className="tool-card-icon"><Icon name={iconForTool(tool.id, tool.category)} /></span>
       <div className="tool-card-content">
-        <div className="tool-card-title"><h3>{tool.name}</h3><span className={`tool-status ${tool.ready ? "status-ready" : "status-soon"}`}>{tool.ready ? "Ready" : "Soon"}</span></div>
+        <div className="tool-card-title"><h3>{tool.name}</h3><span className={`tool-status ${tool.ready ? "status-ready" : "status-soon"}`}>{availability}</span></div>
         <p>{tool.description}</p>
         {tool.requires && <small>Requires {tool.requires}</small>}
       </div>

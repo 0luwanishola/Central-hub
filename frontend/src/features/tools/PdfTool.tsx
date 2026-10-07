@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { apiUrl, runPdfTool } from "../../services/apiClient";
 import type { Tool } from "../../types";
@@ -15,6 +15,8 @@ type PdfField = {
   min?: number;
   max?: number;
 };
+
+type SelectedFile = { id: number; file: File };
 
 const positions = ["top-left", "top-centre", "top-right", "middle-left", "centre", "middle-right", "bottom-left", "bottom-centre", "bottom-right"];
 const fonts = ["Helvetica", "Helvetica-Bold", "Times", "Times-Bold", "Courier"];
@@ -66,14 +68,36 @@ const acceptedTypes: Record<string, string> = {
 export function PdfTool({ tool }: { tool: Tool }) {
   const fields = pdfFields[tool.id] ?? [];
   const [values, setValues] = useState<Record<string, string>>(() => Object.fromEntries(fields.map((field) => [field.name, field.defaultValue ?? ""])));
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<SelectedFile[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<{ download_url: string; filename: string; expires_in_seconds: number } | null>(null);
   const multiple = acceptsMultiple.has(tool.id);
+  const nextFileId = useRef(0);
 
   function onFilesChanged(event: ChangeEvent<HTMLInputElement>) {
-    setFiles(Array.from(event.target.files ?? []));
+    const selected = Array.from(event.target.files ?? []).map((file) => ({ id: nextFileId.current++, file }));
+    if (selected.length) {
+      setFiles((current) => multiple ? [...current, ...selected] : selected);
+    }
+    // Clearing the native input lets the same file be selected again after removal.
+    event.currentTarget.value = "";
+    setResult(null); setError("");
+  }
+
+  function removeFile(index: number) {
+    setFiles((current) => current.filter((_, currentIndex) => currentIndex !== index));
+    setResult(null); setError("");
+  }
+
+  function moveFile(index: number, offset: -1 | 1) {
+    setFiles((current) => {
+      const nextIndex = index + offset;
+      if (nextIndex < 0 || nextIndex >= current.length) return current;
+      const next = [...current];
+      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
+      return next;
+    });
     setResult(null); setError("");
   }
 
@@ -81,10 +105,10 @@ export function PdfTool({ tool }: { tool: Tool }) {
     event.preventDefault(); setError(""); setResult(null);
     if (!files.length) { setError("Choose a file to continue."); return; }
     if (tool.id === "pdf-merge" && files.length < 2) { setError("Choose at least two PDFs to merge."); return; }
-    if (files.reduce((total, file) => total + file.size, 0) > 100 * 1024 * 1024) { setError("The combined upload must be 100 MB or smaller."); return; }
+    if (files.reduce((total, entry) => total + entry.file.size, 0) > 100 * 1024 * 1024) { setError("The combined upload must be 100 MB or smaller."); return; }
 
     const form = new FormData();
-    for (const file of files) form.append("files", file);
+    for (const entry of files) form.append("files", entry.file);
     for (const [name, value] of Object.entries(values)) form.append(name, value);
     setBusy(true);
     try { setResult(await runPdfTool(tool.id, form)); }
@@ -98,10 +122,19 @@ export function PdfTool({ tool }: { tool: Tool }) {
       {tool.id === "pdf-add-image" && <div className="pdf-tip">Choose one PDF and one PNG or JPEG image.</div>}
       {fields.map((field) => <PdfField key={field.name} field={field} value={values[field.name] ?? ""} onChange={(value) => setValues((current) => ({ ...current, [field.name]: value }))} />)}
       <label className="field-label file-field"><span>{tool.id === "pdf-merge" ? "PDF files" : tool.id === "pdf-add-image" ? "PDF and image files" : "PDF file"}</span>
-        <input type="file" accept={acceptedTypes[tool.id] ?? ".pdf,application/pdf"} multiple={multiple} required onChange={onFilesChanged} />
-        <small>Maximum combined upload: 100 MB.</small>
+        <input type="file" accept={acceptedTypes[tool.id] ?? ".pdf,application/pdf"} multiple={multiple} onChange={onFilesChanged} />
+        <small>{multiple ? "Choose more files to add them to the list below." : "Choose a file to process."} Maximum combined upload: 100 MB.</small>
       </label>
-      {files.length > 0 && <div className="selected-files">{files.map((file) => <span key={`${file.name}-${file.lastModified}`}><Icon name="pdf" /> {file.name} <small>{formatBytes(file.size)}</small></span>)}</div>}
+      {files.length > 0 && <ol className="selected-files" aria-label={tool.id === "pdf-merge" ? "Selected files in merge order" : "Selected files"}>{files.map(({ id, file }, index) => <li className="selected-file" key={id}>
+        <span className="selected-file-position">{index + 1}</span><Icon name="pdf" /><span className="selected-file-name" title={file.name}>{file.name}</span><small>{formatBytes(file.size)}</small>
+        <span className="selected-file-actions">
+          {files.length > 1 && <>
+            <button type="button" aria-label={`Move ${file.name} up`} title="Move up" disabled={index === 0} onClick={() => moveFile(index, -1)}>↑</button>
+            <button type="button" aria-label={`Move ${file.name} down`} title="Move down" disabled={index === files.length - 1} onClick={() => moveFile(index, 1)}>↓</button>
+          </>}
+          <button type="button" aria-label={`Remove ${file.name}`} title="Remove file" onClick={() => removeFile(index)}>Remove</button>
+        </span>
+      </li>)}</ol>}
       <div className="form-actions"><button className="button button-primary" type="submit" disabled={busy}>{busy ? <><span className="spinner" /> Processing…</> : `Run ${tool.name}`}</button></div>
     </form>
     {error && <div className="notice notice-error" role="alert">{error}</div>}

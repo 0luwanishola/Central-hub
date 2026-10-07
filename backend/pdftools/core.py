@@ -18,8 +18,9 @@ Legacy htmx requests receive a small HTML fragment containing a link to
 download URL and the filename. Both let the browser handle the final download.
 
 Inputs are deleted as soon as processing finishes. Results live until they are
-downloaded or ``RESULTS_TTL`` expires, so ``cleanup_stale()`` runs on every new
-request rather than trusting a background sweeper to still be alive.
+downloaded or ``RESULTS_TTL`` expires. Token and workspace operations sweep stale
+entries, and the app also runs a periodic cleanup so abandoned files expire while
+the service is idle.
 """
 
 from __future__ import annotations
@@ -96,7 +97,7 @@ def remove_tree(path: Path) -> None:
 
 
 def cleanup_stale() -> None:
-    """Delete results and drafts nobody came back for. Called per request."""
+    """Delete expired results and drafts during PDF access and periodic cleanup."""
     cutoff = time.time() - RESULTS_TTL
     for token in [t for t, item in _results.items() if item.created < cutoff]:
         item = _results.pop(token, None)
@@ -110,6 +111,7 @@ def cleanup_stale() -> None:
 
 def new_workspace() -> Path:
     """A temp directory for one request's inputs and results."""
+    cleanup_stale()
     return Path(tempfile.mkdtemp(prefix="pdftool-"))
 
 
@@ -125,11 +127,13 @@ def store_draft(source: Path, filename: str) -> str:
 
 
 def find_draft(token: str) -> Optional[Draft]:
+    cleanup_stale()
     return _drafts.get(token)
 
 
 def take_draft(token: str) -> Optional[Draft]:
     """Fetch a draft and remove it, so a previewed file is signed at most once."""
+    cleanup_stale()
     return _drafts.pop(token, None)
 
 
@@ -161,11 +165,13 @@ def store_result(source: Path, download_name: str, media_type: str = "applicatio
 
 
 def find_result(token: str) -> Optional[Result]:
+    cleanup_stale()
     return _results.get(token)
 
 
 def take_result(token: str) -> Optional[Result]:
     """Fetch a result and remove it, so a link works only once."""
+    cleanup_stale()
     return _results.pop(token, None)
 
 

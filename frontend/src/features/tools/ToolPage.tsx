@@ -1,4 +1,5 @@
 import { Link, useOutletContext, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import type { AppContext } from "../../app/AppShell";
 import { displayCategory } from "../../app/AppShell";
 import { ClientUtility } from "./ClientUtility";
@@ -7,10 +8,12 @@ import { Icon, iconForTool } from "../../ui/Icon";
 
 export function ToolPage() {
   const { toolId } = useParams();
-  const { tools, toolsLoading } = useOutletContext<AppContext>();
+  const { tools, toolsLoading, toolsError } = useOutletContext<AppContext>();
+  const queryClient = useQueryClient();
   const tool = tools.find((item) => item.id === toolId);
 
   if (toolsLoading && !tool) return <section className="page-wrap"><div className="loading-line">Loading tool…</div></section>;
+  if (toolsError && !tool) return <section className="page-wrap"><div className="empty-state"><span className="eyebrow">Catalog unavailable</span><h1>We couldn’t load this tool.</h1><p role="alert">{toolsError.message}</p><button className="button button-primary" type="button" onClick={() => void queryClient.invalidateQueries({ queryKey: ["tools"] })}>Try again</button></div></section>;
   if (!tool) return <section className="page-wrap"><div className="empty-state"><span className="eyebrow">Tool not found</span><h1>We couldn’t find that tool.</h1><Link className="button button-primary" to="/">Back to dashboard</Link></div></section>;
 
   return (

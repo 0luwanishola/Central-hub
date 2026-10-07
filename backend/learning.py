@@ -595,6 +595,7 @@ def _python_output(source: str) -> str:
         raise CodeRunError("This code is nested too deeply. Try a simpler version.") from None
 
     output: list[str] = []
+    output_chars = 0
     environment: dict = {}
     steps = 0
 
@@ -604,14 +605,50 @@ def _python_output(source: str) -> str:
         if steps > 10_000:
             raise CodeRunError("This program is doing too much work. Check your loops.")
 
-    def display(value):
-        if value is None:
-            return "None"
-        if value is True:
-            return "True"
-        if value is False:
-            return "False"
-        return str(value)
+    def append_output(value: str) -> None:
+        nonlocal output_chars
+        if output_chars + len(value) > 5_000:
+            raise CodeRunError("The program produced too much output.")
+        output.append(value)
+        output_chars += len(value)
+
+    def display(value, nested=False, depth=0):
+        """Write a bounded representation without expanding nested lists at once."""
+        if isinstance(value, (list, tuple)):
+            if depth >= 64:
+                raise CodeRunError("That value is nested too deeply to display.")
+            opening, closing = ("[", "]") if isinstance(value, list) else ("(", ")")
+            append_output(opening)
+            for index, item in enumerate(value):
+                if index:
+                    append_output(", ")
+                display(item, nested=True, depth=depth + 1)
+            if isinstance(value, tuple) and len(value) == 1:
+                append_output(",")
+            append_output(closing)
+            return
+        if isinstance(value, str):
+            append_output(repr(value) if nested else value)
+        elif value is None:
+            append_output("None")
+        elif value is True:
+            append_output("True")
+        elif value is False:
+            append_output("False")
+        else:
+            append_output(str(value))
+
+    def guard_collection(value):
+        """Bound the work Python's native nested collection comparisons can do."""
+        pending = [value]
+        visited = 0
+        while pending:
+            current = pending.pop()
+            visited += 1
+            if visited > 5_000:
+                raise CodeRunError("That comparison involves a collection that is too large.")
+            if isinstance(current, (list, tuple)):
+                pending.extend(current)
 
     def safe_result(value):
         if isinstance(value, (str, list, tuple)) and len(value) > 5_000:
@@ -675,6 +712,9 @@ def _python_output(source: str) -> str:
             for operation, comparator in zip(node.ops, node.comparators):
                 right = evaluate(comparator, scope, depth)
                 try:
+                    if isinstance(left, (list, tuple)) or isinstance(right, (list, tuple)):
+                        guard_collection(left)
+                        guard_collection(right)
                     matched = comparisons[type(operation)](left, right)
                 except (KeyError, TypeError, ValueError):
                     raise CodeRunError("That comparison does not work with these values.") from None
@@ -713,10 +753,11 @@ def _python_output(source: str) -> str:
                 options = {keyword.arg: evaluate(keyword.value, scope, depth) for keyword in node.keywords if keyword.arg in {"sep", "end"}}
                 if len(options) != len(node.keywords) or not all(isinstance(value, str) for value in options.values()):
                     raise CodeRunError("print() only supports text values for sep and end.")
-                line = options.get("sep", " ").join(display(value) for value in arguments) + options.get("end", "\n")
-                if sum(map(len, output)) + len(line) > 5_000:
-                    raise CodeRunError("The program produced too much output.")
-                output.append(line)
+                for index, value in enumerate(arguments):
+                    if index:
+                        append_output(options.get("sep", " "))
+                    display(value)
+                append_output(options.get("end", "\n"))
                 return None
             if name == "range":
                 if not 1 <= len(arguments) <= 3 or not all(isinstance(value, int) for value in arguments):

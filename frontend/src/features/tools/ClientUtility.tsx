@@ -128,23 +128,54 @@ function RegexUtility() {
   const [sample, setSample] = useState("");
   const [matches, setMatches] = useState<string[]>([]);
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [truncated, setTruncated] = useState(false);
+  const workerRef = useRef<Worker | null>(null);
+  const timeoutRef = useRef<number | null>(null);
+
+  function stopWorker() {
+    workerRef.current?.terminate();
+    workerRef.current = null;
+    if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+  }
+
+  useEffect(() => () => stopWorker(), []);
+
   function run(event: FormEvent) {
     event.preventDefault();
+    stopWorker();
+    setMatches([]); setError(""); setTruncated(false); setBusy(true);
     try {
-      const expression = new RegExp(pattern, flags.includes("g") ? flags : `${flags}g`);
-      const found = [...sample.matchAll(expression)].map((match) => `${match[0]}  ·  index ${match.index ?? 0}`);
-      setMatches(found); setError("");
-    } catch (reason) {
-      setMatches([]); setError(reason instanceof Error ? reason.message : "Invalid regular expression.");
+      const worker = new Worker(new URL("./regexWorker.ts", import.meta.url), { type: "module" });
+      workerRef.current = worker;
+      worker.onmessage = (event: MessageEvent<{ matches?: string[]; error?: string; truncated?: boolean }>) => {
+        stopWorker(); setBusy(false);
+        if (event.data.error) {
+          setMatches([]); setError(event.data.error);
+        } else {
+          setMatches(event.data.matches ?? []); setTruncated(Boolean(event.data.truncated));
+        }
+      };
+      worker.onerror = (event) => {
+        event.preventDefault();
+        stopWorker(); setBusy(false); setMatches([]); setError("The regex check could not finish.");
+      };
+      worker.postMessage({ pattern, flags: flags.includes("g") ? flags : `${flags}g`, sample });
+      timeoutRef.current = window.setTimeout(() => {
+        stopWorker(); setBusy(false); setMatches([]); setError("This pattern took too long. Try a simpler expression or shorter sample.");
+      }, 1_000);
+    } catch {
+      stopWorker(); setBusy(false); setMatches([]); setError("The regex check could not start in this browser.");
     }
   }
   return <form onSubmit={run}>
-    <div className="field-row regex-fields"><FieldLabel label="Pattern"><input className="form-input mono-text" value={pattern} onChange={(event) => setPattern(event.target.value)} placeholder={"\\b\\w+@\\w+\\.\\w+\\b"} /></FieldLabel><FieldLabel label="Flags"><input className="form-input mono-text" value={flags} onChange={(event) => setFlags(event.target.value)} placeholder="gim" /></FieldLabel></div>
-    <FieldLabel label="Test string"><textarea className="form-textarea code-area short-area" value={sample} onChange={(event) => setSample(event.target.value)} placeholder="Paste a sample to test…" /></FieldLabel>
-    <div className="form-actions"><button className="button button-primary" type="submit">Find matches</button></div>
+    <div className="field-row regex-fields"><FieldLabel label="Pattern"><input className="form-input mono-text" value={pattern} onChange={(event) => setPattern(event.target.value)} placeholder={"\\b\\w+@\\w+\\.\\w+\\b"} disabled={busy} /></FieldLabel><FieldLabel label="Flags"><input className="form-input mono-text" value={flags} onChange={(event) => setFlags(event.target.value)} placeholder="gim" disabled={busy} /></FieldLabel></div>
+    <FieldLabel label="Test string"><textarea className="form-textarea code-area short-area" value={sample} maxLength={100_000} onChange={(event) => setSample(event.target.value)} placeholder="Paste a sample to test…" disabled={busy} /><small>Maximum 100,000 characters. Checks stop after one second.</small></FieldLabel>
+    <div className="form-actions"><button className="button button-primary" type="submit" disabled={busy}>{busy ? "Checking…" : "Find matches"}</button></div>
     {error && <div className="notice notice-error" role="alert">{error}</div>}
-    {matches.length > 0 && <div className="match-results"><strong>{matches.length} {matches.length === 1 ? "match" : "matches"}</strong>{matches.map((match, index) => <code key={`${match}-${index}`}>{match}</code>)}</div>}
-    {!error && sample && matches.length === 0 && <p className="field-hint">No matches found.</p>}
+    {matches.length > 0 && <div className="match-results"><strong>{matches.length}{truncated ? "+" : ""} {matches.length === 1 && !truncated ? "match" : "matches"}</strong>{matches.map((match, index) => <code key={`${match}-${index}`}>{match}</code>)}{truncated && <p className="field-hint">Showing the first results only.</p>}</div>}
+    {!busy && !error && sample && matches.length === 0 && <p className="field-hint">No matches found.</p>}
   </form>;
 }
 

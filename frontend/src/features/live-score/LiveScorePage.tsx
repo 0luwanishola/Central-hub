@@ -57,7 +57,7 @@ export function LiveScorePage() {
       {error && <div className="notice notice-error" role="alert">{(error as Error).message}</div>}
       {data?.error && <div className="notice notice-error" role="alert">LiveScore is temporarily unavailable: {data.error}</div>}
       {isLoading && <div className="loading-line">Loading fixtures…</div>}
-      {!isLoading && !error && matches.length === 0 && <div className="empty-state compact"><span className="empty-symbol"><Icon name="sports" /></span><h2>No matches scheduled</h2><p>No {scope === "all" ? "matches" : scope} fixtures for {day}. Try another date.</p></div>}
+      {!isLoading && !error && !data?.error && matches.length === 0 && <div className="empty-state compact"><span className="empty-symbol"><Icon name="sports" /></span><h2>No matches scheduled</h2><p>No {scope === "all" ? "matches" : scope} fixtures for {day}. Try another date.</p></div>}
 
       <div className="match-groups">
         {Object.entries(grouped).map(([label, fixtures]) => (
