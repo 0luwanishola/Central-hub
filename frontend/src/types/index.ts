@@ -9,7 +9,8 @@ export type Tool = {
   execution: "client" | "api" | "unavailable";
 };
 
-export type LearningTrackId = "python" | "sql";
+export type LearningTrackId = string;
+export type LearningTrackKind = "legacy" | "path";
 export type LearningDifficulty = "beginner" | "intermediate" | "advanced";
 
 export type LearningDataset = {
@@ -26,25 +27,78 @@ export type LearningCodingExercise = {
   success: string;
 };
 
+export type LearningDataSource = {
+  name: string;
+  variable?: string;
+  column?: string;
+  limit?: number;
+};
+
 export type LearningChallenge = {
+  id: string;
+  phase_id?: string;
   title: string;
   topic: string;
   difficulty: LearningDifficulty;
   xp: number;
+  runner?: string;
+  mode?: string;
+  business_question?: string;
+  concept?: string;
+  concept_example?: string;
+  metric_contract?: string;
+  documentation_url?: string;
+  data_sources?: LearningDataSource[];
+  dataset?: { id: string; name: string };
+  capstone?: boolean;
+  capstone_rubric?: string[];
   datasets?: LearningDataset[];
   coding: LearningCodingExercise;
 };
 
+export type LearningPhase = {
+  id: string;
+  name: string;
+  arc: string;
+  summary: string;
+};
+
 export type LearningTrack = {
   id: LearningTrackId;
+  kind?: LearningTrackKind;
+  curriculum_id?: string;
   name: string;
   summary: string;
+  language?: string;
+  phases?: LearningPhase[];
   challenges: LearningChallenge[];
 };
 
-export type LearningProgress = {
-  python: number[];
-  sql: number[];
+export type LearningProgress = Partial<Record<LearningTrackId, number[]>>;
+
+export type LearningDatasetTable = {
+  name: string;
+  description: string;
+  grain: string;
+  columns: string[];
+  types: Record<string, string>;
+  keys: { primary: string[]; foreign: string[] };
+};
+
+export type LearningRelationship = {
+  from_table: string;
+  from_column: string;
+  to_table: string;
+  to_column: string;
+  cardinality: string;
+};
+
+export type LearningDatasetMetadata = {
+  id: string;
+  name: string;
+  summary: string;
+  tables: LearningDatasetTable[];
+  relationships: LearningRelationship[];
 };
 
 export type LearningSession = {
@@ -52,6 +106,7 @@ export type LearningSession = {
   xp: number;
   progress: LearningProgress;
   tracks: LearningTrack[];
+  datasets: LearningDatasetMetadata[];
 };
 
 export type LearningAnswer = {
@@ -70,6 +125,20 @@ export type LearningCodeResult = {
   progress: LearningProgress;
   output: string;
   feedback: string;
+  sql_columns?: string[];
+  sql_rows?: (string | number | null)[][];
+  error_line?: number;
+  error_column?: number;
+  preview?: boolean;
+  mastery_badge_awarded?: boolean;
+};
+
+export type LearningSolution = {
+  explanation: string;
+  code: string;
+  language: "python" | "sql";
+  concept?: string;
+  capstone_rubric?: string[];
 };
 
 export type MatchSide = {
@@ -114,4 +183,33 @@ export type Lineup = {
   formation?: string | null;
   starters?: { name: string; number?: number | string | null }[];
   bench?: { name: string; number?: number | string | null }[];
+};
+
+export type NewsItem = {
+  id: string;
+  title: string;
+  url: string;
+  source: string;
+  publishedAt: string;
+};
+
+export type NewsResponse = {
+  items: NewsItem[];
+  fetchedAt: string;
+  stale: boolean;
+};
+
+export type PdfDownload = {
+  download_url: string;
+  filename: string;
+  expires_in_seconds: number;
+};
+
+export type PdfSignPreview = {
+  token: string;
+  page: number;
+  pages: number;
+  image: string;
+  widthPt: number;
+  heightPt: number;
 };

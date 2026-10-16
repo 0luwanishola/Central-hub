@@ -13,9 +13,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile
+
+if __package__:
+    # Support ``python -m backend.main`` from the project root.
+    from .news import FeedConfig, NewsStorage, fetch_all_feeds, router as news_router
+else:
+    # Also support ``python main.py`` / ``uvicorn main:app`` from backend/.
+    from news import FeedConfig, NewsStorage, fetch_all_feeds, router as news_router
 
 if __package__:
     # Support ``python -m backend.main`` from the project root.
@@ -142,8 +149,56 @@ def group_matches(matches: list, scope: str) -> list:
 
 BASE_DIR = Path(__file__).parent
 
-# Provider credentials live in backend/.env, never in the repo or the browser.
-load_dotenv(BASE_DIR / ".env")
+# Provider/MySQL credentials live in a local .env file, never in the repo or browser.
+load_dotenv(BASE_DIR.parent / ".env", override=False)
+load_dotenv(BASE_DIR / ".env", override=False)
+
+
+# News feed configuration
+# Format: NEWS_FEEDS="name1|url1,max_items1;name2|url2,max_items2"
+# Example: NEWS_FEEDS="Ars Technica|https://arstechnica.com/feed/,20;The Verge|https://www.theverge.com/rss/index.xml,15"
+def parse_news_feeds() -> list[FeedConfig]:
+    """Parse NEWS_FEEDS environment variable into FeedConfig list."""
+    feeds_env = os.getenv("NEWS_FEEDS", "")
+    feeds: list[FeedConfig] = []
+
+    if not feeds_env.strip():
+        # Default feeds for tech/developer audience
+        default_feeds = [
+            ("Ars Technica", "https://arstechnica.com/feed/", 20),
+            ("The Verge", "https://www.theverge.com/rss/index.xml", 15),
+            ("Hacker News", "https://hnrss.org/frontpage", 20),
+        ]
+        for name, url, max_items in default_feeds:
+            feeds.append(FeedConfig(name=name, url=url, maxItems=max_items))
+        return feeds
+
+    for feed_spec in feeds_env.split(";"):
+        feed_spec = feed_spec.strip()
+        if not feed_spec:
+            continue
+        try:
+            # Format: name|url,max_items
+            name_part, rest = feed_spec.split("|", 1)
+            url_part, max_items_part = rest.rsplit(",", 1)
+            feeds.append(
+                FeedConfig(
+                    name=name_part.strip(),
+                    url=url_part.strip(),
+                    maxItems=int(max_items_part.strip()),
+                )
+            )
+        except (ValueError, IndexError) as e:
+            # Log but don't fail startup for malformed feed config
+            import logging
+
+            logging.warning("Invalid feed spec '%s': %s", feed_spec, e)
+            continue
+
+    return feeds
+
+
+NEWS_FEED_CONFIGS = parse_news_feeds()
 
 
 @asynccontextmanager
@@ -151,21 +206,67 @@ async def lifespan(app: FastAPI):
     """One shared HTTP client for outbound provider calls."""
     learning.initialize_learning_store()
     app.state.http = httpx.AsyncClient(timeout=15.0)
+
+    # Initialize news storage
+    cache_path = BASE_DIR / "data" / "news_cache.json"
+    app.state.news_storage = NewsStorage(cache_path, max_total_items=100, max_age_hours=48)
+
     async def expire_pdf_files():
         while True:
             await asyncio.sleep(60)
             pdftools.cleanup_stale()
 
+    async def refresh_news_feeds():
+        """Background task to refresh news feeds every 15 minutes."""
+        while True:
+            await asyncio.sleep(900)  # 15 minutes
+            try:
+                results = await fetch_all_feeds(app.state.http, NEWS_FEED_CONFIGS)
+                app.state.news_storage.update_from_feed_results(results, NEWS_FEED_CONFIGS)
+                success_count = sum(1 for r in results if r.success)
+                import logging
+
+                logging.info(
+                    "News feed refresh complete: %d/%d feeds succeeded",
+                    success_count,
+                    len(NEWS_FEED_CONFIGS),
+                )
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                import logging
+
+                logging.error("News feed refresh failed: %s", e)
+
+    # Initial fetch on startup
+    try:
+        initial_results = await fetch_all_feeds(app.state.http, NEWS_FEED_CONFIGS)
+        app.state.news_storage.update_from_feed_results(initial_results, NEWS_FEED_CONFIGS)
+        success_count = sum(1 for r in initial_results if r.success)
+        import logging
+
+        logging.info("Initial news feed fetch: %d/%d feeds succeeded", success_count, len(NEWS_FEED_CONFIGS))
+    except Exception as e:
+        import logging
+
+        logging.error("Initial news feed fetch failed: %s", e)
+
     cleanup_task = asyncio.create_task(expire_pdf_files())
+    news_refresh_task = asyncio.create_task(refresh_news_feeds())
+
     try:
         yield
     finally:
         cleanup_task.cancel()
-        await asyncio.gather(cleanup_task, return_exceptions=True)
+        news_refresh_task.cancel()
+        await asyncio.gather(cleanup_task, news_refresh_task, return_exceptions=True)
         await app.state.http.aclose()
 
 
 app = FastAPI(title="Central Hub", lifespan=lifespan)
+
+# Include news router
+app.include_router(news_router)
 
 
 class LearningSessionRequest(BaseModel):
@@ -175,14 +276,33 @@ class LearningSessionRequest(BaseModel):
 class LearningAnswerRequest(BaseModel):
     learner_id: str = Field(min_length=1, max_length=64)
     track: str = Field(min_length=1, max_length=20)
-    level: int = Field(ge=0, le=10)
+    level: int = Field(ge=0)
     choice: int = Field(ge=0, le=2)
 
 
 class LearningCodeRequest(BaseModel):
     learner_id: str = Field(min_length=1, max_length=64)
     track: str = Field(min_length=1, max_length=20)
-    level: int = Field(ge=0, le=10)
+    level: int = Field(ge=0)
+    code: str = Field(max_length=5_000)
+
+
+class LearningEventRequest(BaseModel):
+    learner_id: str = Field(min_length=1, max_length=64)
+    challenge_id: str = Field(min_length=1, max_length=80)
+    event: str = Field(min_length=1, max_length=32)
+
+
+class LearningSolutionRequest(BaseModel):
+    learner_id: str = Field(min_length=1, max_length=64)
+    track: str = Field(min_length=1, max_length=20)
+    challenge_id: str = Field(min_length=1, max_length=80)
+
+
+class LearningPreviewRequest(BaseModel):
+    learner_id: str = Field(min_length=1, max_length=64)
+    track: str = Field(min_length=1, max_length=20)
+    level: int = Field(ge=0)
     code: str = Field(max_length=5_000)
 
 # The standalone Vite app uses a separate origin during development. Keep these
@@ -289,11 +409,22 @@ CLIENT_TOOL_IDS = {
     "color-picker",
     "qr-generator",
 }
+# Tools with bespoke routes instead of one run(inputs, params, output) handler.
+#
+# Signing needs three requests -- preview the page, page through to the right one,
+# then apply -- so it cannot fit the single-request shape the generic route
+# assumes. Listing it here is what marks it API-backed and ready in both catalogs.
+PDF_CUSTOM_ROUTES = {"pdf-sign"}
+
 for _tool in TOOLS:
     if _tool["id"] in CLIENT_TOOL_IDS:
         _tool["execution"] = "client"
         _tool["ready"] = True
-    elif _tool["id"] == "live-score" or _tool["id"] in pdftools.HANDLERS:
+    elif (
+        _tool["id"] == "live-score"
+        or _tool["id"] in pdftools.HANDLERS
+        or _tool["id"] in PDF_CUSTOM_ROUTES
+    ):
         _tool["execution"] = "api"
         _tool["ready"] = True
     else:
@@ -303,18 +434,15 @@ for _tool in TOOLS:
 # Category key used by the legacy /pdf compatibility redirect.
 PDF_CATEGORY = "pdf"
 
-# PDF tools that have a real page, mapped to the file types the browser should
-# offer in the picker. A tool id in here means backend/templates/pdf/<id>.html
-# exists, and /tool/{tool_id} serves it instead of the shared placeholder.
+# PDF tools with a classic page fragment, mapped to the file types the browser
+# should offer in the picker. A tool id in here must have a matching
+# backend/templates/pdf/<id>.html (asserted below with the other PDF invariants);
+# /tool/{tool_id} serves it instead of the shared placeholder. Edit tools and
+# signing live in the standalone app and have no classic page.
 PDF_PAGES = {
     "pdf-merge": ".pdf,application/pdf",
     "pdf-split": ".pdf,application/pdf",
     "pdf-page-organiser": ".pdf,application/pdf",
-    "pdf-add-text": ".pdf,application/pdf",
-    "pdf-add-image": ".pdf,application/pdf,.png,.jpg,.jpeg",
-    "pdf-watermark": ".pdf,application/pdf",
-    "pdf-metadata": ".pdf,application/pdf",
-    "pdf-sign": ".pdf,application/pdf",
 }
 
 CATEGORY_ICONS = {
@@ -528,6 +656,9 @@ async def tool_page(request: Request, tool_id: str):
         content=content,
         context={
             "tool": tool,
+            # The full-page render includes this same fragment, so a reload keeps
+            # the tool's form instead of dropping back to the shared placeholder.
+            "content": content,
             "categories": CATEGORIES,
             "all_tools": TOOLS,
             "accept": PDF_PAGES.get(tool_id),
@@ -555,6 +686,23 @@ def api_learning_session(payload: LearningSessionRequest):
     return learning.create_or_restore_session(payload.learner_id)
 
 
+@app.post("/api/learning/event", status_code=204)
+def api_learning_event(payload: LearningEventRequest):
+    """Accept fixed event labels only; no source code, SQL, or result is retained."""
+    try:
+        learning.record_learning_event(payload.challenge_id, payload.event, payload.learner_id)
+    except learning.LearningError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+@app.post("/api/learning/solution")
+def api_learning_solution(payload: LearningSolutionRequest):
+    try:
+        return learning.get_solution(payload.learner_id, payload.track, payload.challenge_id)
+    except learning.LearningError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
 @app.post("/api/learning/answer")
 def api_learning_answer(payload: LearningAnswerRequest):
     """Check one Code Quest answer and persist first-time completions."""
@@ -569,6 +717,15 @@ def api_learning_code(payload: LearningCodeRequest):
     """Run a guided Code Quest solution in its restricted language runner."""
     try:
         return learning.submit_code(payload.learner_id, payload.track, payload.level, payload.code)
+    except learning.LearningError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+@app.post("/api/learning/preview")
+def api_learning_preview(payload: LearningPreviewRequest):
+    """Run learner code against challenge sample data without awarding XP or updating progress."""
+    try:
+        return learning.preview_code(payload.learner_id, payload.track, payload.level, payload.code)
     except learning.LearningError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
@@ -647,19 +804,20 @@ def _pdf_result(request: Request, download_name: str, token: str):
         request, "pdf/result.html", {"download_name": download_name, "token": token}
     )
 
-# Tools with bespoke routes instead of one run(inputs, params, output) handler.
-#
-# Signing needs three requests -- preview the page, page through to the right one,
-# then apply -- so it cannot fit the single-request shape the generic route below
-# assumes. Listing it here keeps the check that every tool id in PDF_PAGES has
-# somewhere to go.
-PDF_CUSTOM_ROUTES = {"pdf-sign"}
-
-# Every tool with a page must have somewhere for its form to POST. A pdf/ fragment
-# that posts to a handler that does not exist only fails once someone uses it.
+# Every tool with a classic page must have both somewhere for its form to POST and
+# the fragment itself on disk. A missing handler or template only fails once
+# someone uses the tool, so both are checked at import time.
 assert PDF_PAGES.keys() <= (pdftools.HANDLERS.keys() | PDF_CUSTOM_ROUTES), (
     "PDF_PAGES entries with no handler: "
     f"{sorted(PDF_PAGES.keys() - pdftools.HANDLERS.keys() - PDF_CUSTOM_ROUTES)}"
+)
+_missing_pdf_templates = sorted(
+    tool_id
+    for tool_id in PDF_PAGES
+    if not (BASE_DIR / "templates" / "pdf" / f"{tool_id}.html").exists()
+)
+assert not _missing_pdf_templates, (
+    f"PDF_PAGES entries with no template: {_missing_pdf_templates}"
 )
 
 # The download route is declared first so "download" can never be read as a tool id.
@@ -684,15 +842,27 @@ async def download_pdf_result(request: Request, token: str):
 # They do not actually collide with it: each has two path segments after /api/pdf,
 # where the generic route has one.
 
-@app.post("/api/pdf/pdf-sign/preview", response_class=HTMLResponse)
-async def pdf_sign_preview(request: Request):
-    """Keep the uploaded PDF as a draft and return a rendered page to aim at.
+def _sign_preview_payload(token: str, described: dict) -> dict:
+    """The JSON the placement UI needs: page image, page count and page size.
 
-    This does not stream a PNG back on its own because the response also carries
-    the whole placement form. The image is inlined as a data URL, which keeps the
-    fragment self-contained: htmx can swap it in without a second request, and the
-    form it brings along already knows the page count and page size.
+    The page is inlined as a data URL so the app shows it without a second
+    request, and the size travels in PDF points so the browser never has to
+    guess the real page geometry.
     """
+    image = base64.b64encode(described["png"]).decode("ascii")
+    return {
+        "token": token,
+        "page": described["page"],
+        "pages": described["pages"],
+        "image": f"data:image/png;base64,{image}",
+        "widthPt": round(described["width_pt"], 1),
+        "heightPt": round(described["height_pt"], 1),
+    }
+
+
+@app.post("/api/pdf/pdf-sign/preview", response_class=JSONResponse)
+async def pdf_sign_preview(request: Request):
+    """Keep the uploaded PDF as a draft and return a rendered page to aim at."""
     form = await request.form()
     uploads = [v for v in form.getlist("files") if isinstance(v, UploadFile)]
 
@@ -705,57 +875,34 @@ async def pdf_sign_preview(request: Request):
 
         # The draft owns its tree from here; nothing else may delete it.
         token = pdftools.store_draft(saved[0], saved[0].name)
-
-        return templates.TemplateResponse(
-            request,
-            "pdf/signature_preview.html",
-            {
-                "token": token,
-                "page": described["page"],
-                "pages": described["pages"],
-                "image": base64.b64encode(described["png"]).decode("ascii"),
-                "width_pt": round(described["width_pt"], 1),
-                "height_pt": round(described["height_pt"], 1),
-            },
-        )
+        return JSONResponse(_sign_preview_payload(token, described))
 
     except pdftools.ToolError as exc:
         pdftools.remove_tree(workspace)
-        return pdftools.error_response(str(exc))
+        return _pdf_error(request, str(exc))
     except Exception:
         pdftools.remove_tree(workspace)
         raise
 
 
-@app.get("/api/pdf/pdf-sign/page/{token}", response_class=HTMLResponse)
+@app.get("/api/pdf/pdf-sign/page/{token}", response_class=JSONResponse)
 async def pdf_sign_page(request: Request, token: str, page: Optional[int] = None):
-    """Re-render a different page of a previewed PDF, as the same fragment."""
+    """Re-render a different page of a previewed PDF, with the same payload shape."""
     draft = pdftools.find_draft(token)
     if draft is None:
-        return pdftools.error_response("That preview has expired. Upload the PDF again.")
+        return _pdf_error(request, "That preview has expired. Upload the PDF again.", 404)
 
     try:
         described = await run_in_threadpool(
             pdftools.sign.describe_page, draft.path, page or 1
         )
     except pdftools.ToolError as exc:
-        return pdftools.error_response(str(exc))
+        return _pdf_error(request, str(exc))
 
-    return templates.TemplateResponse(
-        request,
-        "pdf/signature_preview.html",
-        {
-            "token": token,
-            "page": described["page"],
-            "pages": described["pages"],
-            "image": base64.b64encode(described["png"]).decode("ascii"),
-            "width_pt": round(described["width_pt"], 1),
-            "height_pt": round(described["height_pt"], 1),
-        },
-    )
+    return JSONResponse(_sign_preview_payload(token, described))
 
 
-@app.post("/api/pdf/pdf-sign/apply", response_class=HTMLResponse)
+@app.post("/api/pdf/pdf-sign/apply", response_class=JSONResponse)
 async def pdf_sign_apply(request: Request):
     """Place the signature on the drafted PDF and return a download link."""
     form = await request.form()
@@ -764,8 +911,7 @@ async def pdf_sign_apply(request: Request):
     token = values.get("draft", "")
     draft = pdftools.take_draft(token)
     if draft is None:
-        pdftools.remove_tree(pdftools.new_workspace())
-        return pdftools.error_response("That preview has expired. Upload the PDF again.")
+        return _pdf_error(request, "That preview has expired. Upload the PDF again.", 404)
 
     result_dir = pdftools.new_workspace()
     try:
@@ -787,18 +933,14 @@ async def pdf_sign_apply(request: Request):
         # their upload and preview.
         pdftools.put_draft(token, draft)
         pdftools.remove_tree(result_dir)
-        return pdftools.error_response(str(exc))
+        return _pdf_error(request, str(exc))
     except Exception:
         pdftools.remove_tree(result_dir)
         raise
 
     # The draft's own tree belongs to it and was consumed on success.
     pdftools.remove_tree(draft.path.parent)
-    return templates.TemplateResponse(
-        request,
-        "pdf/result.html",
-        {"download_name": download_name, "token": download_token},
-    )
+    return _pdf_result(request, download_name, download_token)
 
 
 @app.post("/api/pdf/{tool_id}", response_class=JSONResponse)

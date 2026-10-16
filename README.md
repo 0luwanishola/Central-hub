@@ -151,14 +151,26 @@
 
   ### 5.3 Code Quest
 
-  Code Quest is the educational component of the application. It provides multiple challenge tracks for:
+  Code Quest is the educational component of the application. It offers two phase-based learning paths plus the original Foundations tracks:
 
-  - Python fundamentals
-  - SQL query reasoning
+  - **Python Path** — 14 phases from the first `print()` to files, classes, tests, and a read-only SQLite bridge. Early phases run in a guided interpreter for instant, safe feedback; later phases run real CPython in an isolated subprocess.
+  - **SQL Path** — 10 phases from `SELECT` through joins, subqueries, window functions, schema design, cleaning, and performance work. Read-only phases query sandboxed SQLite databases; advanced phases add a disposable scratch database for schema and `UPDATE` lessons.
+  - **Legacy Foundations tracks** — the original Python and SQL puzzle tracks remain playable with their existing progress.
 
-  Each challenge provides an editable coding workspace, starter code, progressive hints, run feedback, and output. Learners build Python fundamentals and SQL queries one step at a time, earn XP, and unlock subsequent levels. Challenge progress is persisted in SQLite on the backend.
+  All sandboxes run on SQLite through the Python standard library: no database server, container, or driver is required. Four datasets are shipped in `backend/datasets/` and shared by both paths:
 
-  Python submissions run through a small interpreter that supports the language features used in the lessons, including variables, printing, conditions, loops, and simple functions. SQL submissions run against temporary sample tables in a read-only SQLite connection. The service does not execute submitted Python with `eval` or `exec`, and SQL writes are blocked.
+  - **Northwind** — the classic business schema (customers, orders, products, shipping).
+  - **StreamHub** — a streaming product: users, subscriptions, invoices, events, and support tickets.
+  - **Bookings** — a deliberately messy hotel bookings extract for cleaning lessons.
+  - **Reviews** — product reviews with a JSON attributes column.
+
+  Datasets are seeded deterministically (identical data on every run), so grading is stable and datasets can be rotated freely. A `perf` tier (for example, 200,000 events) backs the performance lessons.
+
+  Grading never compares against copied expected text: each submission runs live alongside a private reference solution on the same data, and behavior-preserving checks (reduced-data re-runs, constraint probes, feature checks) keep hardcoding from passing. Submissions run with row, step, and time caps; ATTACH, PRAGMA, and file-access functions are blocked. The service does not execute submitted Python with `eval` or `exec`, and learner source is never retained.
+
+  Learner progress, XP, hints, and badges are stored in SQLite on the backend. Preview runs never award XP, hints unlock with the same rule as challenges, and solution walkthroughs open only after a challenge is completed.
+
+  Adding a new path is a data change, not an engine change: drop a `phases_<name>.py` module into `backend/curriculum/` that exports a `PATH` built with the shared factories, and register a runner in `grading.RUNNERS` if the path needs a new execution profile (for example, a future machine-learning path with pandas/numpy). See [doc.md](doc.md) for the full plan and the extension recipe.
 
   ### 5.4 LiveScore
 

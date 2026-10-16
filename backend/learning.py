@@ -6,9 +6,16 @@ import re
 import sqlite3
 from contextlib import closing
 from datetime import datetime, timezone
+from decimal import Decimal
 from pathlib import Path
 from typing import Optional
 from uuid import UUID, uuid4
+
+if __package__:
+    from . import curriculum, guided_python
+else:
+    import curriculum
+    import guided_python
 
 DB_PATH = Path(__file__).parent / "data" / "learning.sqlite3"
 
@@ -458,6 +465,11 @@ TRACKS = {
     },
 }
 
+LEGACY_TRACK_IDS = {"python", "sql"}
+PATH_TRACKS = curriculum.PATHS
+PATH_TRACK_IDS = set(PATH_TRACKS)
+ALL_TRACKS = {**TRACKS, **PATH_TRACKS}
+
 
 def _connect() -> sqlite3.Connection:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -482,6 +494,35 @@ def initialize_learning_store() -> None:
                 level INTEGER NOT NULL CHECK (level BETWEEN 0 AND 10),
                 completed_at TEXT NOT NULL,
                 PRIMARY KEY (learner_id, track, level)
+            );
+            CREATE TABLE IF NOT EXISTS learning_challenge_progress (
+                learner_id TEXT NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+                track TEXT NOT NULL,
+                challenge_id TEXT NOT NULL,
+                completed_at TEXT NOT NULL,
+                PRIMARY KEY (learner_id, track, challenge_id)
+            );
+            CREATE TABLE IF NOT EXISTS learning_events (
+                challenge_id TEXT NOT NULL,
+                event_type TEXT NOT NULL CHECK (event_type IN ('run_pass', 'run_fail', 'hint_open')),
+                event_date TEXT NOT NULL,
+                event_count INTEGER NOT NULL DEFAULT 1 CHECK (event_count > 0),
+                PRIMARY KEY (challenge_id, event_type, event_date)
+            );
+            CREATE TABLE IF NOT EXISTS learning_hint_usage (
+                learner_id TEXT NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+                track TEXT NOT NULL,
+                challenge_id TEXT NOT NULL,
+                opened_at TEXT NOT NULL,
+                PRIMARY KEY (learner_id, track, challenge_id)
+            );
+            CREATE TABLE IF NOT EXISTS learning_badges (
+                learner_id TEXT NOT NULL REFERENCES learners(id) ON DELETE CASCADE,
+                track TEXT NOT NULL,
+                challenge_id TEXT NOT NULL,
+                badge_id TEXT NOT NULL,
+                earned_at TEXT NOT NULL,
+                PRIMARY KEY (learner_id, track, challenge_id, badge_id)
             );
             """
         )
@@ -524,28 +565,47 @@ def _progress(connection: sqlite3.Connection, learner_id: str) -> dict:
     learner = connection.execute("SELECT xp FROM learners WHERE id = ?", (learner_id,)).fetchone()
     if learner is None:
         raise LearningError(404, "Learning profile not found.")
-    result = {track: [] for track in TRACKS}
+    result = {track: [] for track in ALL_TRACKS}
     rows = connection.execute(
         "SELECT track, level FROM learning_progress WHERE learner_id = ? ORDER BY track, level",
         (learner_id,),
     ).fetchall()
     for row in rows:
         result[row["track"]].append(row["level"])
+    stable_rows = connection.execute(
+        "SELECT track, challenge_id FROM learning_challenge_progress WHERE learner_id = ? ORDER BY completed_at, challenge_id",
+        (learner_id,),
+    ).fetchall()
+    stable_ids: dict[str, set[str]] = {}
+    for row in stable_rows:
+        stable_ids.setdefault(row["track"], set()).add(row["challenge_id"])
+    for track_id, track in ALL_TRACKS.items():
+        if track_id in LEGACY_TRACK_IDS:
+            continue
+        done = stable_ids.get(track_id, set())
+        result[track_id] = [
+            index for index, challenge in enumerate(track["challenges"])
+            if challenge["id"] in done
+        ]
     return {"xp": learner["xp"], "progress": result}
 
 
 def _public_tracks() -> list[dict]:
-    return [
+    legacy = [
         {
             "id": track_id,
+            "kind": "legacy",
+            "curriculum_id": track.get("curriculum_id", "legacy"),
             "name": track["name"],
             "summary": track["summary"],
             "challenges": [
                 {
+                    "id": challenge.get("id", f"{track_id}:{index}"),
                     "title": challenge["title"],
                     "topic": challenge["topic"],
-                    "difficulty": _challenge_difficulty(index),
+                    "difficulty": challenge.get("difficulty", _challenge_difficulty(index)),
                     "xp": _challenge_xp(index),
+                    **({key: challenge[key] for key in ("business_question", "concept", "concept_example", "metric_contract", "documentation_url", "data_sources", "capstone", "capstone_rubric") if key in challenge}),
                     **({"datasets": challenge["datasets"]} if "datasets" in challenge else {}),
                     "coding": {key: value for key, value in challenge["coding"].items() if not key.startswith("_")},
                 }
@@ -554,6 +614,52 @@ def _public_tracks() -> list[dict]:
         }
         for track_id, track in TRACKS.items()
     ]
+    return legacy + curriculum.public_path_tracks()
+
+
+def record_learning_event(challenge_id: str, event_type: str, learner_id: Optional[str] = None) -> None:
+    """Store anonymous daily counters only; never retain learner source/query text."""
+    allowed_events = {"run_pass", "run_fail", "hint_open"}
+    known_ids = {
+        challenge.get("id", f"{track_id}:{index}")
+        for track_id, track in ALL_TRACKS.items()
+        for index, challenge in enumerate(track["challenges"])
+    }
+    if event_type not in allowed_events or challenge_id not in known_ids:
+        raise LearningError(422, "That learning event is not available.")
+    normalized_id = _valid_learner_id(learner_id) if learner_id else None
+    if event_type == "hint_open" and normalized_id is None:
+        raise LearningError(422, "A learning profile is required to open a hint.")
+    day = datetime.now(timezone.utc).date().isoformat()
+    try:
+        with closing(_connect()) as connection:
+            if event_type == "hint_open":
+                owning_track = next((track_id for track_id, track in ALL_TRACKS.items() if any(
+                    item.get("id") == challenge_id for item in track["challenges"]
+                )), None)
+                state = _progress(connection, normalized_id)
+                challenge_index = next((index for index, item in enumerate(ALL_TRACKS[owning_track]["challenges"])
+                                        if item.get("id") == challenge_id), None)
+                if owning_track is None or challenge_index is None or challenge_index > len(state["progress"][owning_track]):
+                    raise LearningError(409, "Complete the previous challenge before opening this hint.")
+                connection.execute(
+                    "INSERT OR IGNORE INTO learning_hint_usage (learner_id, track, challenge_id, opened_at) VALUES (?, ?, ?, ?)",
+                    (normalized_id, owning_track, challenge_id, datetime.now(timezone.utc).isoformat()),
+                )
+            connection.execute(
+                """INSERT INTO learning_events (challenge_id, event_type, event_date, event_count)
+                   VALUES (?, ?, ?, 1)
+                   ON CONFLICT(challenge_id, event_type, event_date)
+                   DO UPDATE SET event_count = event_count + 1""",
+                (challenge_id, event_type, day),
+            )
+            connection.execute("DELETE FROM learning_events WHERE event_date < date('now', '-90 days')")
+            connection.commit()
+    except LearningError:
+        raise
+    except sqlite3.Error:
+        # A metrics write must never make a learner lose a successful run.
+        return
 
 
 def _challenge_difficulty(level: int) -> str:
@@ -571,276 +677,20 @@ def _challenge_xp(level: int) -> int:
 class CodeRunError(Exception):
     """A safe, learner-facing error from the small Code Quest runners."""
 
-
-class _ReturnValue(Exception):
-    def __init__(self, value):
-        self.value = value
-
-
-class _MiniFunction:
-    def __init__(self, parameters, body):
-        self.parameters = parameters
-        self.body = body
+    def __init__(self, message: str, line: int | None = None, column: int | None = None, kind: str = "Exception"):
+        super().__init__(message)
+        self.message = message
+        self.line = line
+        self.column = column
+        self.kind = kind
 
 
-def _python_output(source: str) -> str:
-    """Interpret Code Quest's constrained Python subset without eval/exec."""
+def _python_output(source: str, initial_environment: Optional[dict] = None, max_steps: int = 10_000) -> str:
+    """Run the guided interpreter (implementation lives in ``guided_python``)."""
     try:
-        tree = ast.parse(source, mode="exec")
-    except (SyntaxError, ValueError) as exc:
-        line = getattr(exc, "lineno", None)
-        where = f" on line {line}" if line else ""
-        raise CodeRunError(f"Syntax error{where}: {getattr(exc, 'msg', 'check the code format')}.") from None
-    except RecursionError:
-        raise CodeRunError("This code is nested too deeply. Try a simpler version.") from None
-
-    output: list[str] = []
-    output_chars = 0
-    environment: dict = {}
-    steps = 0
-
-    def tick():
-        nonlocal steps
-        steps += 1
-        if steps > 10_000:
-            raise CodeRunError("This program is doing too much work. Check your loops.")
-
-    def append_output(value: str) -> None:
-        nonlocal output_chars
-        if output_chars + len(value) > 5_000:
-            raise CodeRunError("The program produced too much output.")
-        output.append(value)
-        output_chars += len(value)
-
-    def display(value, nested=False, depth=0):
-        """Write a bounded representation without expanding nested lists at once."""
-        if isinstance(value, (list, tuple)):
-            if depth >= 64:
-                raise CodeRunError("That value is nested too deeply to display.")
-            opening, closing = ("[", "]") if isinstance(value, list) else ("(", ")")
-            append_output(opening)
-            for index, item in enumerate(value):
-                if index:
-                    append_output(", ")
-                display(item, nested=True, depth=depth + 1)
-            if isinstance(value, tuple) and len(value) == 1:
-                append_output(",")
-            append_output(closing)
-            return
-        if isinstance(value, str):
-            append_output(repr(value) if nested else value)
-        elif value is None:
-            append_output("None")
-        elif value is True:
-            append_output("True")
-        elif value is False:
-            append_output("False")
-        else:
-            append_output(str(value))
-
-    def guard_collection(value):
-        """Bound the work Python's native nested collection comparisons can do."""
-        pending = [value]
-        visited = 0
-        while pending:
-            current = pending.pop()
-            visited += 1
-            if visited > 5_000:
-                raise CodeRunError("That comparison involves a collection that is too large.")
-            if isinstance(current, (list, tuple)):
-                pending.extend(current)
-
-    def safe_result(value):
-        if isinstance(value, (str, list, tuple)) and len(value) > 5_000:
-            raise CodeRunError("That value is too large to display in Code Quest.")
-        if isinstance(value, int) and value.bit_length() > 4096:
-            raise CodeRunError("That number is too large for this exercise.")
-        return value
-
-    binary_operators = {
-        ast.Add: operator.add,
-        ast.Sub: operator.sub,
-        ast.Mult: operator.mul,
-        ast.Div: operator.truediv,
-        ast.FloorDiv: operator.floordiv,
-        ast.Mod: operator.mod,
-    }
-    comparisons = {
-        ast.Eq: operator.eq,
-        ast.NotEq: operator.ne,
-        ast.Lt: operator.lt,
-        ast.LtE: operator.le,
-        ast.Gt: operator.gt,
-        ast.GtE: operator.ge,
-        ast.In: lambda left, right: left in right,
-        ast.NotIn: lambda left, right: left not in right,
-    }
-
-    def evaluate(node, scope, depth=0):
-        tick()
-        if isinstance(node, ast.Constant) and isinstance(node.value, (str, int, float, bool, type(None))):
-            return node.value
-        if isinstance(node, ast.Name):
-            if node.id not in scope:
-                raise CodeRunError(f"The name '{node.id}' has not been defined yet.")
-            return scope[node.id]
-        if isinstance(node, (ast.List, ast.Tuple)):
-            if len(node.elts) > 1_000:
-                raise CodeRunError("That collection is too large for this exercise.")
-            values = [evaluate(item, scope, depth) for item in node.elts]
-            return values if isinstance(node, ast.List) else tuple(values)
-        if isinstance(node, ast.BinOp) and type(node.op) in binary_operators:
-            left = evaluate(node.left, scope, depth)
-            right = evaluate(node.right, scope, depth)
-            if isinstance(node.op, ast.Mult):
-                sequence, count = (left, right) if isinstance(left, (str, list, tuple)) and isinstance(right, int) else (right, left) if isinstance(right, (str, list, tuple)) and isinstance(left, int) else (None, None)
-                if sequence is not None and len(sequence) * max(0, count) > 5_000:
-                    raise CodeRunError("That multiplication would create a value that is too large.")
-            try:
-                return safe_result(binary_operators[type(node.op)](left, right))
-            except (TypeError, ValueError, ZeroDivisionError, OverflowError):
-                raise CodeRunError("That operation does not work with those values.") from None
-        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub, ast.Not)):
-            value = evaluate(node.operand, scope, depth)
-            try:
-                result = not value if isinstance(node.op, ast.Not) else value if isinstance(node.op, ast.UAdd) else -value
-                return safe_result(result)
-            except (TypeError, ValueError):
-                raise CodeRunError("That operation does not work with this value.") from None
-        if isinstance(node, ast.Compare):
-            left = evaluate(node.left, scope, depth)
-            for operation, comparator in zip(node.ops, node.comparators):
-                right = evaluate(comparator, scope, depth)
-                try:
-                    if isinstance(left, (list, tuple)) or isinstance(right, (list, tuple)):
-                        guard_collection(left)
-                        guard_collection(right)
-                    matched = comparisons[type(operation)](left, right)
-                except (KeyError, TypeError, ValueError):
-                    raise CodeRunError("That comparison does not work with these values.") from None
-                if not matched:
-                    return False
-                left = right
-            return True
-        if isinstance(node, ast.BoolOp):
-            if isinstance(node.op, ast.And):
-                result = True
-                for item in node.values:
-                    result = evaluate(item, scope, depth)
-                    if not result:
-                        return result
-                return result
-            result = False
-            for item in node.values:
-                result = evaluate(item, scope, depth)
-                if result:
-                    return result
-            return result
-        if isinstance(node, ast.IfExp):
-            branch = node.body if evaluate(node.test, scope, depth) else node.orelse
-            return evaluate(branch, scope, depth)
-        if isinstance(node, ast.Subscript):
-            value = evaluate(node.value, scope, depth)
-            index = evaluate(node.slice, scope, depth)
-            try:
-                return value[index]
-            except (TypeError, IndexError, KeyError):
-                raise CodeRunError("That item cannot be read from this value.") from None
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
-            name = node.func.id
-            arguments = [evaluate(argument, scope, depth) for argument in node.args]
-            if name == "print":
-                options = {keyword.arg: evaluate(keyword.value, scope, depth) for keyword in node.keywords if keyword.arg in {"sep", "end"}}
-                if len(options) != len(node.keywords) or not all(isinstance(value, str) for value in options.values()):
-                    raise CodeRunError("print() only supports text values for sep and end.")
-                for index, value in enumerate(arguments):
-                    if index:
-                        append_output(options.get("sep", " "))
-                    display(value)
-                append_output(options.get("end", "\n"))
-                return None
-            if name == "range":
-                if not 1 <= len(arguments) <= 3 or not all(isinstance(value, int) for value in arguments):
-                    raise CodeRunError("range() needs one to three whole-number values.")
-                try:
-                    values = range(*arguments)
-                except (ValueError, TypeError):
-                    raise CodeRunError("Those values do not make a valid range.") from None
-                try:
-                    if len(values) > 1_000:
-                        raise CodeRunError("That range is too large for this exercise.")
-                except OverflowError:
-                    raise CodeRunError("That range is too large for this exercise.")
-                return values
-            if name == "len":
-                if len(arguments) != 1:
-                    raise CodeRunError("len() needs one value.")
-                try:
-                    return len(arguments[0])
-                except OverflowError:
-                    raise CodeRunError("That collection is too large for this exercise.") from None
-                except TypeError:
-                    raise CodeRunError("len() needs a list, tuple, or text value.") from None
-            if name in scope and isinstance(scope[name], _MiniFunction):
-                function = scope[name]
-                if len(arguments) != len(function.parameters):
-                    raise CodeRunError(f"{name}() received the wrong number of values.")
-                if depth >= 12:
-                    raise CodeRunError("This function call is nested too deeply.")
-                local_scope = dict(scope)
-                local_scope.update(zip(function.parameters, arguments))
-                try:
-                    execute_block(function.body, local_scope, depth + 1)
-                except _ReturnValue as returned:
-                    return returned.value
-                return None
-            raise CodeRunError(f"'{name}()' is not available in this learning runner.")
-        raise CodeRunError("That code feature is not in the current lesson yet.")
-
-    def execute_block(statements, scope, depth=0):
-        for statement in statements:
-            tick()
-            if isinstance(statement, ast.Expr):
-                evaluate(statement.value, scope, depth)
-            elif isinstance(statement, ast.Assign) and len(statement.targets) == 1 and isinstance(statement.targets[0], ast.Name):
-                scope[statement.targets[0].id] = evaluate(statement.value, scope, depth)
-            elif isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name) and statement.value is not None:
-                scope[statement.target.id] = evaluate(statement.value, scope, depth)
-            elif isinstance(statement, ast.AugAssign) and isinstance(statement.target, ast.Name) and type(statement.op) in binary_operators:
-                if statement.target.id not in scope:
-                    raise CodeRunError(f"The name '{statement.target.id}' has not been defined yet.")
-                try:
-                    scope[statement.target.id] = safe_result(binary_operators[type(statement.op)](scope[statement.target.id], evaluate(statement.value, scope, depth)))
-                except (TypeError, ValueError, ZeroDivisionError, OverflowError):
-                    raise CodeRunError("That update does not work with these values.") from None
-            elif isinstance(statement, ast.If):
-                branch = statement.body if evaluate(statement.test, scope, depth) else statement.orelse
-                execute_block(branch, scope, depth)
-            elif isinstance(statement, ast.For) and isinstance(statement.target, ast.Name) and not statement.orelse:
-                values = evaluate(statement.iter, scope, depth)
-                if not isinstance(values, (list, tuple, range)) or len(values) > 1_000:
-                    raise CodeRunError("for loops currently need a list, tuple, or range with at most 1,000 items.")
-                for value in values:
-                    scope[statement.target.id] = value
-                    execute_block(statement.body, scope, depth)
-            elif isinstance(statement, ast.FunctionDef) and not statement.decorator_list and not statement.args.defaults and not statement.args.kwonlyargs:
-                if statement.args.vararg or statement.args.kwarg or statement.args.posonlyargs:
-                    raise CodeRunError("Functions in this lesson use regular named parameters.")
-                scope[statement.name] = _MiniFunction([argument.arg for argument in statement.args.args], statement.body)
-            elif isinstance(statement, ast.Return):
-                raise _ReturnValue(evaluate(statement.value, scope, depth) if statement.value else None)
-            elif isinstance(statement, ast.Pass):
-                pass
-            else:
-                raise CodeRunError("That statement is not supported in this lesson yet.")
-
-    try:
-        execute_block(tree.body, environment)
-    except _ReturnValue:
-        raise CodeRunError("return can only be used inside a function.") from None
-    except RecursionError:
-        raise CodeRunError("This code is nested too deeply. Try a simpler version.") from None
-    return "".join(output).rstrip("\n")
+        return guided_python.run(source, initial_environment, max_steps=max_steps)
+    except guided_python.GuidedError as exc:
+        raise CodeRunError(exc.message, line=exc.line, column=exc.column, kind=exc.kind) from None
 
 
 def _python_shape_error(source: str, level: int) -> Optional[str]:
@@ -1085,11 +935,45 @@ def _sql_shape_error(source: str, level: int) -> Optional[str]:
     return None
 
 
+def _run_challenge_code(track_id: str, challenge: dict, source: str, level: int) -> tuple[str, bool, Optional[str], Optional[list[str]], Optional[list[list]], Optional[int], Optional[int]]:
+    output = ""
+    run_error = None
+    sql_columns = None
+    sql_rows = None
+    error_line = None
+    error_column = None
+    try:
+        if track_id in PATH_TRACK_IDS:
+            # Phase-based path tracks: grading lives in the curriculum package.
+            return curriculum.grade_challenge(challenge, source)
+        if track_id == "python":
+            output = _python_output(source, {})
+            correct = output == challenge["coding"]["_expected_output"]
+            if correct:
+                run_error = _python_shape_error(source, level)
+                correct = run_error is None
+        else:
+            sql_columns, sql_rows, output = _sql_result(source, challenge.get("datasets", []))
+            correct = sql_columns == challenge["coding"]["_expected_columns"] and sql_rows == challenge["coding"]["_expected_rows"]
+            if correct:
+                run_error = _sql_shape_error(source, level)
+                correct = run_error is None
+    except CodeRunError as exc:
+        correct = False
+        run_error = exc.message
+        error_line = exc.line
+        error_column = exc.column
+    except ValueError as exc:
+        correct = False
+        run_error = str(exc)
+    return output, correct, run_error, sql_columns, sql_rows, error_line, error_column
+
+
 def submit_code(learner_id: str, track_id: str, level: int, source: str) -> dict:
     normalized_id = _valid_learner_id(learner_id)
     if normalized_id is None:
         raise LearningError(404, "Learning profile not found. Refresh the page to start a new profile.")
-    track = TRACKS.get(track_id)
+    track = ALL_TRACKS.get(track_id)
     if track is None or level < 0 or level >= len(track["challenges"]):
         raise LearningError(404, "Challenge not found.")
     if len(source) > 5_000:
@@ -1101,24 +985,8 @@ def submit_code(learner_id: str, track_id: str, level: int, source: str) -> dict
         if level > len(state["progress"][track_id]):
             raise LearningError(409, "Complete the previous level first.")
 
-    output = ""
-    run_error = None
-    try:
-        if track_id == "python":
-            output = _python_output(source)
-            correct = output == challenge["coding"]["_expected_output"]
-            if correct:
-                run_error = _python_shape_error(source, level)
-                correct = run_error is None
-        else:
-            columns, rows, output = _sql_result(source, challenge.get("datasets", []))
-            correct = columns == challenge["coding"]["_expected_columns"] and rows == challenge["coding"]["_expected_rows"]
-            if correct:
-                run_error = _sql_shape_error(source, level)
-                correct = run_error is None
-    except CodeRunError as exc:
-        correct = False
-        run_error = str(exc)
+    output, correct, run_error, sql_columns, sql_rows, error_line, error_column = _run_challenge_code(track_id, challenge, source, level)
+    record_learning_event(challenge.get("id", f"{track_id}:{level}"), "run_pass" if correct else "run_fail")
 
     with closing(_connect()) as connection:
         try:
@@ -1128,13 +996,34 @@ def submit_code(learner_id: str, track_id: str, level: int, source: str) -> dict
             if level > len(completed):
                 raise LearningError(409, "Complete the previous level first.")
             awarded_xp = 0
+            mastery_badge_awarded = False
             if correct and level not in completed:
-                connection.execute(
-                    "INSERT INTO learning_progress (learner_id, track, level, completed_at) VALUES (?, ?, ?, ?)",
-                    (normalized_id, track_id, level, datetime.now(timezone.utc).isoformat()),
-                )
-                awarded_xp = _challenge_xp(level)
+                if track_id in LEGACY_TRACK_IDS:
+                    connection.execute(
+                        "INSERT INTO learning_progress (learner_id, track, level, completed_at) VALUES (?, ?, ?, ?)",
+                        (normalized_id, track_id, level, datetime.now(timezone.utc).isoformat()),
+                    )
+                else:
+                    connection.execute(
+                        "INSERT INTO learning_challenge_progress (learner_id, track, challenge_id, completed_at) VALUES (?, ?, ?, ?)",
+                        (normalized_id, track_id, challenge["id"], datetime.now(timezone.utc).isoformat()),
+                    )
+                if track_id in LEGACY_TRACK_IDS:
+                    awarded_xp = _challenge_xp(level)
+                else:
+                    awarded_xp = challenge.get("xp") or _challenge_xp(level)
                 connection.execute("UPDATE learners SET xp = xp + ? WHERE id = ?", (awarded_xp, normalized_id))
+                if track_id in PATH_TRACK_IDS:
+                    hint_used = connection.execute(
+                        "SELECT 1 FROM learning_hint_usage WHERE learner_id = ? AND track = ? AND challenge_id = ?",
+                        (normalized_id, track_id, challenge["id"]),
+                    ).fetchone()
+                    if hint_used is None:
+                        cursor = connection.execute(
+                            "INSERT OR IGNORE INTO learning_badges (learner_id, track, challenge_id, badge_id, earned_at) VALUES (?, ?, ?, 'independent-solve', ?)",
+                            (normalized_id, track_id, challenge["id"], datetime.now(timezone.utc).isoformat()),
+                        )
+                        mastery_badge_awarded = cursor.rowcount == 1
             connection.commit()
         except Exception:
             connection.rollback()
@@ -1148,9 +1037,80 @@ def submit_code(learner_id: str, track_id: str, level: int, source: str) -> dict
         "progress": state["progress"],
         "output": output,
         "feedback": run_error or (challenge["coding"]["success"] if correct else "Your code ran, but the result does not match the task yet."),
+        "mastery_badge_awarded": mastery_badge_awarded,
     }
+    if sql_columns is not None:
+        response["sql_columns"] = sql_columns
+    if sql_rows is not None:
+        response["sql_rows"] = sql_rows
+    if error_line is not None:
+        response["error_line"] = error_line
+    if error_column is not None:
+        response["error_column"] = error_column
     if not correct:
         response["hints_available"] = len(challenge["coding"]["hints"])
+    return response
+
+
+def get_solution(learner_id: str, track_id: str, challenge_id: str) -> dict:
+    normalized_id = _valid_learner_id(learner_id)
+    track = ALL_TRACKS.get(track_id)
+    challenge = next((item for item in track["challenges"] if item.get("id") == challenge_id), None) if track else None
+    if normalized_id is None or track is None or track_id in LEGACY_TRACK_IDS or challenge is None:
+        raise LearningError(404, "Solution walkthrough not found.")
+    with closing(_connect()) as connection:
+        completed = connection.execute(
+            "SELECT 1 FROM learning_challenge_progress WHERE learner_id = ? AND track = ? AND challenge_id = ?",
+            (normalized_id, track_id, challenge_id),
+        ).fetchone()
+    if completed is None:
+        raise LearningError(403, "Complete this challenge before viewing its solution walkthrough.")
+    coding = challenge["coding"]
+    return {
+        "explanation": " ".join(part for part in (challenge.get("concept", ""), challenge.get("metric_contract", "")) if part),
+        "concept": challenge.get("concept", ""),
+        "code": challenge.get("reference") or coding.get("_expected_code") or coding.get("_expected_query", ""),
+        "language": coding["language"],
+        "capstone_rubric": challenge.get("capstone_rubric", []),
+    }
+
+
+def preview_code(learner_id: str, track_id: str, level: int, source: str) -> dict:
+    """Run code against challenge sample data without awarding XP or updating progress."""
+    normalized_id = _valid_learner_id(learner_id)
+    if normalized_id is None:
+        raise LearningError(404, "Learning profile not found. Refresh the page to start a new profile.")
+    track = ALL_TRACKS.get(track_id)
+    if track is None or level < 0 or level >= len(track["challenges"]):
+        raise LearningError(404, "Challenge not found.")
+    if len(source) > 5_000:
+        raise LearningError(422, "Keep your code under 5,000 characters.")
+    challenge = track["challenges"][level]
+
+    with closing(_connect()) as connection:
+        state = _progress(connection, normalized_id)
+        if level > len(state["progress"][track_id]):
+            raise LearningError(409, "Complete the previous level first.")
+
+    output, _correct, run_error, sql_columns, sql_rows, error_line, error_column = _run_challenge_code(track_id, challenge, source, level)
+
+    response = {
+        "correct": False,
+        "awarded_xp": 0,
+        "xp": state["xp"],
+        "progress": state["progress"],
+        "output": output,
+        "feedback": run_error or "Code ran successfully.",
+        "preview": True,
+    }
+    if sql_columns is not None:
+        response["sql_columns"] = sql_columns
+    if sql_rows is not None:
+        response["sql_rows"] = sql_rows
+    if error_line is not None:
+        response["error_line"] = error_line
+    if error_column is not None:
+        response["error_column"] = error_column
     return response
 
 
@@ -1165,15 +1125,20 @@ def create_or_restore_session(requested_id: Optional[str]) -> dict:
                     (learner_id, datetime.now(timezone.utc).isoformat()),
                 )
         state = _progress(connection, learner_id)
-    return {"learner_id": learner_id, **state, "tracks": _public_tracks()}
+    return {
+        "learner_id": learner_id,
+        **state,
+        "tracks": _public_tracks(),
+        "datasets": curriculum.datasets_metadata(),
+    }
 
 
 def submit_answer(learner_id: str, track_id: str, level: int, choice: int) -> dict:
     normalized_id = _valid_learner_id(learner_id)
     if normalized_id is None:
         raise LearningError(404, "Learning profile not found. Refresh the page to start a new profile.")
-    track = TRACKS.get(track_id)
-    if track is None or level < 0 or level >= len(track["challenges"]):
+    track = ALL_TRACKS.get(track_id)
+    if track is None or track_id not in LEGACY_TRACK_IDS or level < 0 or level >= len(track["challenges"]):
         raise LearningError(404, "Challenge not found.")
     challenge = track["challenges"][level]
     if choice < 0 or choice >= len(challenge["choices"]):

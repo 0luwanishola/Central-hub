@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { AppContext } from "../../app/AppShell";
 import { displayCategory } from "../../app/AppShell";
 import { ClientUtility } from "./ClientUtility";
+import { PdfSignTool } from "./PdfSignTool";
 import { PdfTool } from "./PdfTool";
 import { Icon, iconForTool } from "../../ui/Icon";
 
@@ -25,7 +26,7 @@ export function ToolPage() {
       </header>
       <section className="tool-panel">
         {tool.execution === "client" && <ClientUtility toolId={tool.id} />}
-        {tool.execution === "api" && tool.category === "pdf" && <PdfTool key={tool.id} tool={tool} />}
+        {tool.execution === "api" && tool.category === "pdf" && (tool.id === "pdf-sign" ? <PdfSignTool key={tool.id} /> : <PdfTool key={tool.id} tool={tool} />)}
         {!tool.ready && <div className="coming-soon"><Icon name="generators" /><h2>This tool is on its way.</h2><p>{tool.requires ? `It needs ${tool.requires} before it can run.` : "It will be available here as soon as it is ready."}</p></div>}
         {tool.ready && tool.execution === "api" && tool.category !== "pdf" && <div className="notice">This tool is connected to the API, but does not have a frontend page yet.</div>}
       </section>

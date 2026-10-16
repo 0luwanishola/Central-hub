@@ -87,19 +87,23 @@ function paintSource(source: string, language: CodeLanguage): ReactNode[] {
 
 export function SyntaxEditor({ id, language, value, readOnly, onChange, onKeyDown }: SyntaxEditorProps) {
   const highlightLayer = useRef<HTMLPreElement>(null);
+  const lineNumberLayer = useRef<HTMLPreElement>(null);
 
   function syncScroll(event: UIEvent<HTMLTextAreaElement>) {
     if (!highlightLayer.current) return;
     highlightLayer.current.scrollTop = event.currentTarget.scrollTop;
     highlightLayer.current.scrollLeft = event.currentTarget.scrollLeft;
+    if (lineNumberLayer.current) lineNumberLayer.current.scrollTop = event.currentTarget.scrollTop;
   }
 
   return (
     <div className="syntax-editor">
       <div className={`syntax-editor-input syntax-editor-input-${language}`}>
+        <pre ref={lineNumberLayer} className="syntax-line-numbers" aria-hidden="true">{Array.from({ length: Math.max(1, value.split("\n").length) }, (_, index) => index + 1).join("\n")}</pre>
         <pre ref={highlightLayer} className="syntax-highlight-layer" aria-hidden="true">{value ? paintSource(value, language) : " "}</pre>
         <textarea
           id={id}
+          aria-describedby="quest-editor-help quest-editor-shortcuts"
           className={`quest-code-editor quest-code-editor-${language}`}
           value={value}
           onChange={(event) => onChange(event.target.value)}

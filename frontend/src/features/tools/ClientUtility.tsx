@@ -89,8 +89,12 @@ function UuidUtility() {
   const [output, setOutput] = useState("");
   function generate() {
     const amount = Math.max(1, Math.min(50, Number(count) || 1));
-    const generator = version === "v1" ? v1 : version === "v7" ? v7 : v4;
-    setOutput(Array.from({ length: amount }, () => generator()).join("\n"));
+    const uuids = Array.from({ length: amount }, () => {
+      if (version === "v1") return v1();
+      if (version === "v7") return v7();
+      return v4();
+    });
+    setOutput(uuids.join("\n"));
   }
   return <>
     <div className="field-row"><FieldLabel label="UUID version"><select className="form-select" value={version} onChange={(event) => setVersion(event.target.value)}><option value="v1">Version 1 · time based</option><option value="v4">Version 4 · random</option><option value="v7">Version 7 · time ordered</option></select></FieldLabel><FieldLabel label="How many"><input className="form-input" type="number" min="1" max="50" value={count} onChange={(event) => setCount(event.target.value)} /></FieldLabel></div>

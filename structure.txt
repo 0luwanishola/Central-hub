@@ -1,17 +1,36 @@
 Central_hub/
 ├── README.md
 ├── doc.md
+├── news.md
 ├── run.txt
-├── .gitignore
 ├── structure.txt
+├── .gitignore
+├── .env.northwind.example
+├── docker-compose.northwind.yml
+├── northwind.sql
+├── CODE_QUEST_IMPLEMENTATION_GUIDE.md
+├── PYTHON_SQL_WORKBENCH_UI_IMPLEMENTATION_GUIDE.md
 │
 ├── backend/
 │   ├── __init__.py
 │   ├── main.py
 │   ├── learning.py
+│   ├── northwind.py
+│   ├── northwind_curriculum.py
 │   ├── requirements.txt
+│   ├── .env.example
 │   ├── data/
-│   │   └── learning.sqlite3
+│   │   ├── learning.sqlite3
+│   │   └── news_cache.json
+│   ├── mysql/
+│   │   ├── 02-learning-views.sql
+│   │   └── 03-create-reader.sh
+│   ├── news/
+│   │   ├── __init__.py
+│   │   ├── models.py
+│   │   ├── router.py
+│   │   ├── service.py
+│   │   └── storage.py
 │   ├── providers/
 │   │   ├── __init__.py
 │   │   ├── apifootball.py
@@ -23,6 +42,9 @@ Central_hub/
 │   │   ├── organise.py
 │   │   ├── overlay.py
 │   │   └── sign.py
+│   ├── static/
+│   │   ├── css/
+│   │   └── js/
 │   └── templates/
 │       ├── base.html
 │       ├── dashboard.html
@@ -75,15 +97,29 @@ Central_hub/
             │   └── CatalogPage.tsx
             ├── learning/
             │   ├── LearnPage.tsx
-            │   └── SyntaxEditor.tsx
+            │   ├── SyntaxEditor.tsx
+            │   └── components/
+            │       ├── ChallengeBrief.tsx
+            │       ├── ChallengeExplorer.tsx
+            │       ├── LearningOutputPanel.tsx
+            │       ├── LearningWorkspace.tsx
+            │       ├── PythonWorkbench.tsx
+            │       ├── SchemaNavigator.tsx
+            │       └── SqlWorkbench.tsx
             ├── live-score/
             │   └── LiveScorePage.tsx
+            ├── news/
+            │   ├── index.ts
+            │   ├── LatestNews.tsx
+            │   ├── NewsItem.tsx
+            │   └── useNews.ts
             ├── notes/
             │   └── NotesPage.tsx
             ├── settings/
             │   └── SettingsPage.tsx
             └── tools/
                 ├── ClientUtility.tsx
+                ├── PdfSignTool.tsx
                 ├── PdfTool.tsx
                 ├── regexWorker.ts
                 └── ToolPage.tsx

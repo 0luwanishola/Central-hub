@@ -7,6 +7,7 @@ import type { AppContext } from "../../app/AppShell";
 import type { Tool } from "../../types";
 import { Icon, iconForTool } from "../../ui/Icon";
 import { LEARNING_SESSION_QUERY_KEY, startLearningSession } from "../../services/apiClient";
+import { LatestNews } from "../news/LatestNews";
 
 const RECENT_TOOLS_KEY = "central-hub:recent-tools:v1";
 
@@ -106,7 +107,7 @@ export function CatalogPage({ showAll = false }: { showAll?: boolean }) {
   const recentIds = readRecentToolIds();
   const recentTools = recentIds.map((id) => readyTools.find((tool) => tool.id === id)).filter((tool): tool is Tool => Boolean(tool));
   const quickTools = [...recentTools, ...readyTools.filter((tool) => !recentIds.includes(tool.id))].slice(0, 4);
-  const clearedChallenges = (learningSession?.progress.python.length ?? 0) + (learningSession?.progress.sql.length ?? 0);
+  const clearedChallenges = (learningSession?.progress?.python?.length ?? 0) + (learningSession?.progress?.sql?.length ?? 0);
   const totalChallenges = learningSession?.tracks.reduce((total, track) => total + track.challenges.length, 0) ?? 0;
   return (
     <section className="page-wrap dashboard-page">
@@ -130,7 +131,7 @@ export function CatalogPage({ showAll = false }: { showAll?: boolean }) {
           <span className="hub-feature-label">Learn by playing</span>
           <h2>Code Quest</h2>
           <p>Write Python and SQL with starter code, hints, and instant feedback.</p>
-          <span className="hub-feature-meta">2 learning tracks <Icon name="arrow" /></span>
+          <span className="hub-feature-meta">{learningSession ? `${learningSession.tracks.length} learning tracks` : "Learning tracks"} <Icon name="arrow" /></span>
         </Link>
         <Link to="/tools" className="hub-feature-card">
           <span className="hub-feature-icon"><Icon name="tools" /></span>
@@ -149,6 +150,8 @@ export function CatalogPage({ showAll = false }: { showAll?: boolean }) {
       </div>
 
       {clearedChallenges > 0 && <Link to="/learn" className="continue-quest-card"><span className="continue-quest-icon"><Icon name="code" /></span><span><strong>Continue Code Quest</strong><small>{clearedChallenges} of {totalChallenges} challenges cleared · {learningSession?.xp ?? 0} XP</small></span><Icon name="arrow" /></Link>}
+
+      <LatestNews limit={5} />
 
       {quickTools.length > 0 && <>
         <div className="section-heading section-heading-tools">

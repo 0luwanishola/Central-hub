@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
 import { AppShell } from "./AppShell";
 import { CatalogPage } from "../features/catalog/CatalogPage";
@@ -6,7 +7,8 @@ import { LiveScorePage, MatchDetailPage } from "../features/live-score/LiveScore
 import { ToolPage } from "../features/tools/ToolPage";
 import { ActivitiesPage } from "../features/activities/ActivitiesPage";
 import { NotesPage } from "../features/notes/NotesPage";
-import { LearnPage } from "../features/learning/LearnPage";
+
+const LearnPage = lazy(() => import("../features/learning/LearnPage").then(({ LearnPage: page }) => ({ default: page })));
 
 export function App() {
   return (
@@ -18,7 +20,7 @@ export function App() {
           <Route path="category/:categoryId" element={<CatalogPage />} />
           <Route path="activities" element={<ActivitiesPage />} />
           <Route path="notes" element={<NotesPage />} />
-          <Route path="learn" element={<LearnPage />} />
+          <Route path="learn" element={<Suspense fallback={<section className="page-wrap"><div className="loading-line">Loading Code Quest...</div></section>}><LearnPage /></Suspense>} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="tool/live-score" element={<LiveScorePage />} />
           <Route path="tool/:toolId" element={<ToolPage />} />

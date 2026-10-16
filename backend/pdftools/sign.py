@@ -4,8 +4,8 @@ This tool does not follow the one-request pattern the other PDF tools use, becau
 placement needs feedback the user has to see before they can decide:
 
 1. ``POST /api/pdf/pdf-sign/preview`` takes the PDF, keeps it as a draft and returns
-   a rendered page image plus the page count.
-2. ``GET /api/pdf/pdf-sign/preview/{token}`` re-renders a different page.
+   a rendered page image plus the page size and count.
+2. ``GET /api/pdf/pdf-sign/page/{token}`` re-renders a different page.
 3. ``POST /api/pdf/pdf-sign/apply`` takes the draft token, the signature image and
    the click position, and produces the signed PDF.
 

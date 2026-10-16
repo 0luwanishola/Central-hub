@@ -3,5 +3,7 @@
 {% block title %}{{ tool.name }} - Central Hub{% endblock %}
 
 {% block main_content %}
-{% include "tool_content.html" %}
+{# The page and the htmx fragment render the same content, so a reload keeps the
+   tool's form instead of dropping back to the shared placeholder. #}
+{% include content %}
 {% endblock %}

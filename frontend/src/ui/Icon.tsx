@@ -2,10 +2,12 @@ import type { ReactNode } from "react";
 
 export type IconName =
   | "home" | "activities" | "code" | "notes" | "tools" | "settings" | "menu"
-  | "sun" | "moon" | "arrow" | "refresh" | "download" | "chevron-left" | "chevron-right" | "crypto" | "data" | "design" | "encoding"
+  | "sun" | "moon" | "arrow" | "refresh" | "download" | "chevron-left" | "chevron-right" | "chevron-down" | "crypto" | "data" | "design" | "encoding"
   | "generators" | "pdf" | "sports" | "text" | "time" | "tic-tac-toe"
   | "memory" | "guess" | "search" | "close" | "check" | "lock" | "trophy" | "json" | "base64" | "hash" | "uuid" | "timestamp"
-  | "regex" | "color" | "qr";
+  | "regex" | "color" | "qr"
+  | "files" | "git" | "extensions" | "plus" | "play" | "terminal" | "alert" | "lightbulb" | "database" | "flag" | "check-circle" | "alert-circle"
+  | "external";
 
 const drawings: Record<IconName, ReactNode> = {
   home: <><path d="m3 10 9-7 9 7" /><path d="M5 9v12h14V9M9 21v-7h6v7" /></>,
@@ -22,6 +24,7 @@ const drawings: Record<IconName, ReactNode> = {
   download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></>,
   "chevron-left": <><path d="m15 18-6-6 6-6" /></>,
   "chevron-right": <><path d="m9 18 6-6-6-6" /></>,
+  "chevron-down": <><path d="m6 9 6 6 6-6" /></>,
   crypto: <><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z" /><path d="m9 12 2 2 4-4" /></>,
   data: <><path d="m8 5-5 7 5 7M16 5l5 7-5 7M14 4l-4 16" /></>,
   design: <><path d="M12 3a9 9 0 1 0 0 18h1.2a2 2 0 0 0 1.5-3.3 1.8 1.8 0 0 1 1.4-3h1.4A3.5 3.5 0 0 0 21 11.2C21 6.7 17 3 12 3Z" /><path d="M7.5 10h.01M10 7.5h.01M15 8h.01" /></>,
@@ -47,6 +50,19 @@ const drawings: Record<IconName, ReactNode> = {
   regex: <><path d="m4 6 6 6-6 6M13 18h7M14 6h6" /></>,
   color: <><path d="M12 3a9 9 0 1 0 0 18h1.2a2 2 0 0 0 1.5-3.3 1.8 1.8 0 0 1 1.4-3h1.4A3.5 3.5 0 0 0 21 11.2C21 6.7 17 3 12 3Z" /><path d="M7.5 10h.01M10 7.5h.01M15 8h.01" /></>,
   qr: <><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" /><path d="M8 8h3v3H8zM14 8h2v2h-2zM14 14h3v3h-3zM8 14h2v2H8z" /></>,
+  files: <><path d="M8 4h11v15H8z" /><path d="M5 8H4v13h11v-2" /><path d="M11 9h5M11 13h5" /></>,
+  git: <><circle cx="6" cy="5" r="2" /><circle cx="18" cy="19" r="2" /><circle cx="18" cy="5" r="2" /><path d="M6 7v9a3 3 0 0 0 3 3h7M18 7v10" /></>,
+  extensions: <><path d="M9 3h6v5h5v6h-5v7H9v-5H4v-6h5z" /></>,
+  plus: <><path d="M12 5v14M5 12h14" /></>,
+  play: <><path d="m8 5 12 7-12 7z" /></>,
+  terminal: <><path d="m4 7 5 5-5 5M12 17h8" /></>,
+  alert: <><path d="M12 3 2.8 20h18.4L12 3Z" /><path d="M12 9v4m0 3h.01" /></>,
+  lightbulb: <><path d="M9 18h6m-5 3h4m-6-6a7 7 0 1 1 8 0c-1 .7-1 1.5-1 3h-4c0-1.5 0-2.3-1-3Z" /></>,
+  database: <><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" /></>,
+  flag: <><path d="M5 21V4m0 1c6-4 8 4 14 0v11c-6 4-8-4-14 0" /></>,
+  "check-circle": <><circle cx="12" cy="12" r="9" /><path d="m8 12 2.5 2.5L16 9" /></>,
+  "alert-circle": <><circle cx="12" cy="12" r="9" /><path d="M12 8v5m0 3h.01" /></>,
+  external: <><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><path d="M15 3h6v6" /><path d="M10 14 21 3" /></>,
 };
 
 export function Icon({ name, className }: { name: IconName; className?: string }) {

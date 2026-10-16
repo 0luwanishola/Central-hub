@@ -25,9 +25,61 @@ const categoryIcons: Record<string, IconName> = {
   time: "time",
 };
 
+// Fallback tool catalog matching backend/main.py TOOLS definition.
+// Used when the API is unavailable so the UI remains functional.
+const FALLBACK_TOOLS: Tool[] = [
+  { id: "json-formatter", name: "JSON Formatter", description: "Format, validate, and minify JSON", icon: "json", category: "data", ready: true, execution: "client" },
+  { id: "base64-encoder", name: "Base64 Encoder/Decoder", description: "Encode/decode Base64 strings", icon: "base64", category: "encoding", ready: true, execution: "client" },
+  { id: "hash-generator", name: "Hash Generator", description: "Generate MD5, SHA1, SHA256 hashes", icon: "hash", category: "crypto", ready: true, execution: "client" },
+  { id: "uuid-generator", name: "UUID Generator", description: "Generate v1, v4, v7 UUIDs", icon: "uuid", category: "generators", ready: true, execution: "client" },
+  { id: "timestamp-converter", name: "Timestamp Converter", description: "Convert between Unix time and human dates", icon: "timestamp", category: "time", ready: true, execution: "client" },
+  { id: "regex-tester", name: "Regex Tester", description: "Test and debug regular expressions", icon: "regex", category: "text", ready: true, execution: "client" },
+  { id: "color-picker", name: "Color Picker", description: "Pick and convert colors (HEX, RGB, HSL)", icon: "color", category: "design", ready: true, execution: "client" },
+  { id: "qr-generator", name: "QR Code Generator", description: "Generate QR codes from text/URLs", icon: "qr", category: "generators", ready: true, execution: "client" },
+  { id: "live-score", name: "LiveScore", description: "Live football scores with scorers, assists and lineups", icon: "sports", category: "sports", ready: true, execution: "api" },
+
+  // PDF tools (subset that have frontend pages)
+  { id: "pdf-merge", name: "Merge PDFs", description: "Combine several PDFs into one, in order", icon: "pdf", category: "pdf", ready: true, execution: "api" },
+  { id: "pdf-split", name: "Split PDF", description: "Pull pages out into separate PDFs, zipped", icon: "pdf", category: "pdf", ready: true, execution: "api" },
+  { id: "pdf-page-organiser", name: "Organise Pages", description: "Reorder, rotate and delete pages", icon: "pdf", category: "pdf", ready: true, execution: "api" },
+  { id: "pdf-add-text", name: "Add Text", description: "Stamp text onto a page", icon: "pdf", category: "pdf", ready: true, execution: "api" },
+  { id: "pdf-add-image", name: "Add Image or Logo", description: "Place an image on a page", icon: "pdf", category: "pdf", ready: true, execution: "api" },
+  { id: "pdf-watermark", name: "Add Watermark", description: "Overlay diagonal text across pages", icon: "pdf", category: "pdf", ready: true, execution: "api" },
+  { id: "pdf-metadata", name: "Edit PDF Metadata", description: "View or change title, author and subject", icon: "pdf", category: "pdf", ready: true, execution: "api" },
+  { id: "pdf-sign", name: "Sign PDF", description: "Draw, type or upload a signature", icon: "pdf", category: "pdf", ready: true, execution: "api" },
+
+  // PDF tools requiring external dependencies (not ready)
+  { id: "pdf-page-numbers", name: "Add Page Numbers", description: "Stamp page numbers in a chosen position", icon: "pdf", category: "pdf", ready: false, execution: "unavailable" },
+  { id: "pdf-to-images", name: "PDF to Images", description: "Render pages to PNG or JPEG", icon: "pdf", category: "pdf", ready: false, execution: "unavailable" },
+  { id: "images-to-pdf", name: "Images to PDF", description: "Turn PNG or JPEG files into a PDF", icon: "pdf", category: "pdf", ready: false, execution: "unavailable" },
+  { id: "pdf-to-text", name: "Extract PDF Text", description: "Pull the text out to a plain file", icon: "pdf", category: "pdf", ready: false, execution: "unavailable" },
+  { id: "pdf-to-word", name: "PDF to Word", description: "Convert to an editable .docx", icon: "pdf", category: "pdf", ready: false, requires: "LibreOffice", execution: "unavailable" },
+  { id: "pdf-to-excel", name: "PDF to Excel", description: "Convert tables to .xlsx", icon: "pdf", category: "pdf", ready: false, requires: "LibreOffice", execution: "unavailable" },
+  { id: "word-to-pdf", name: "Word to PDF", description: "Convert .docx and .odt to PDF", icon: "pdf", category: "pdf", ready: false, requires: "LibreOffice", execution: "unavailable" },
+  { id: "pdf-ocr", name: "OCR Scanned PDF", description: "Make a scanned PDF searchable", icon: "pdf", category: "pdf", ready: false, requires: "Tesseract", execution: "unavailable" },
+  { id: "pdf-annotate", name: "Highlight and Annotate", description: "Mark up text and add notes", icon: "pdf", category: "pdf", ready: false, execution: "unavailable" },
+  { id: "pdf-redact", name: "Redact Text", description: "Black out text permanently", icon: "pdf", category: "pdf", ready: false, execution: "unavailable" },
+  { id: "pdf-fill-forms", name: "Fill PDF Forms", description: "Complete AcroForm fields", icon: "pdf", category: "pdf", ready: false, execution: "unavailable" },
+  { id: "pdf-request-signatures", name: "Request Signatures", description: "Prepare a document for others to sign", icon: "pdf", category: "pdf", ready: false, execution: "unavailable" },
+  { id: "pdf-certificate-sign", name: "Digital Signature", description: "Cryptographically sign with a certificate", icon: "pdf", category: "pdf", ready: false, requires: "a certificate or signing service", execution: "unavailable" },
+  { id: "pdf-verify-signature", name: "Verify Signatures", description: "Check whether a signature is intact", icon: "pdf", category: "pdf", ready: false, requires: "a certificate or signing service", execution: "unavailable" },
+  { id: "pdf-compress", name: "Compress PDF", description: "Shrink file size without ghostscript", icon: "pdf", category: "pdf", ready: false, execution: "unavailable" },
+  { id: "pdf-compress-small", name: "Compress PDF (Small)", description: "Aggressive compression via Ghostscript", icon: "pdf", category: "pdf", ready: false, requires: "Ghostscript", execution: "unavailable" },
+  { id: "pdf-repair", name: "Repair PDF", description: "Rebuild a damaged or unreadable file", icon: "pdf", category: "pdf", ready: false, execution: "unavailable" },
+  { id: "pdf-protect", name: "Encrypt PDF", description: "Add a password and set permissions", icon: "pdf", category: "pdf", ready: false, execution: "unavailable" },
+  { id: "pdf-unlock", name: "Remove PDF Password", description: "Strip an open password you know", icon: "pdf", category: "pdf", ready: false, execution: "unavailable" },
+  { id: "pdf-compare", name: "Compare PDFs", description: "Show what changed between two versions", icon: "pdf", category: "pdf", ready: false, execution: "unavailable" },
+];
+
 export function AppShell() {
-  const { data, isLoading, error } = useQuery({ queryKey: ["tools"], queryFn: getTools });
-  const tools = data ?? [];
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["tools"],
+    queryFn: getTools,
+    staleTime: 60_000,
+    retry: 1,
+  });
+  // Use API data when available, otherwise fall back to static catalog
+  const tools = data?.length ? data : FALLBACK_TOOLS;
   const categories = [...new Set(tools.map((tool) => tool.category))].sort();
   const [theme, setThemeState] = useState<"light" | "dark">(() =>
     document.documentElement.classList.contains("dark") ? "dark" : "light",

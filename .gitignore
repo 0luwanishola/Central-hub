@@ -10,6 +10,7 @@ backend/data/
 .env
 .env.*
 !.env.example
+!.env.northwind.example
 
 # Tooling
 .pytest_cache/
