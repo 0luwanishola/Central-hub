@@ -1,0 +1,89 @@
+Central_hub/
+├── README.md
+├── doc.md
+├── run.txt
+├── .gitignore
+├── structure.txt
+│
+├── backend/
+│   ├── __init__.py
+│   ├── main.py
+│   ├── learning.py
+│   ├── requirements.txt
+│   ├── data/
+│   │   └── learning.sqlite3
+│   ├── providers/
+│   │   ├── __init__.py
+│   │   ├── apifootball.py
+│   │   └── espn.py
+│   ├── pdftools/
+│   │   ├── __init__.py
+│   │   ├── core.py
+│   │   ├── edit.py
+│   │   ├── organise.py
+│   │   ├── overlay.py
+│   │   └── sign.py
+│   └── templates/
+│       ├── base.html
+│       ├── dashboard.html
+│       ├── dashboard_content.html
+│       ├── live_score.html
+│       ├── live_score_content.html
+│       ├── match.html
+│       ├── match_content.html
+│       ├── settings.html
+│       ├── settings_content.html
+│       ├── tool.html
+│       ├── tool_content.html
+│       ├── partials/
+│       │   └── sidebar.html
+│       └── pdf/
+│           ├── _macros.html
+│           ├── pdf-merge.html
+│           ├── pdf-page-organiser.html
+│           ├── pdf-split.html
+│           └── result.html
+│
+└── frontend/
+    ├── index.html
+    ├── package.json
+    ├── package-lock.json
+    ├── vite.config.ts
+    ├── tsconfig.json
+    ├── tsconfig.app.json
+    ├── tsconfig.node.json
+    ├── .env.example
+    ├── public/
+    │   └── sw.js
+    └── src/
+        ├── main.tsx
+        ├── styles.css
+        ├── vite-env.d.ts
+        ├── types/
+        │   └── index.ts
+        ├── ui/
+        │   └── Icon.tsx
+        ├── services/
+        │   └── apiClient.ts
+        ├── app/
+        │   ├── App.tsx
+        │   └── AppShell.tsx
+        └── features/
+            ├── activities/
+            │   └── ActivitiesPage.tsx
+            ├── catalog/
+            │   └── CatalogPage.tsx
+            ├── learning/
+            │   ├── LearnPage.tsx
+            │   └── SyntaxEditor.tsx
+            ├── live-score/
+            │   └── LiveScorePage.tsx
+            ├── notes/
+            │   └── NotesPage.tsx
+            ├── settings/
+            │   └── SettingsPage.tsx
+            └── tools/
+                ├── ClientUtility.tsx
+                ├── PdfTool.tsx
+                ├── regexWorker.ts
+                └── ToolPage.tsx
