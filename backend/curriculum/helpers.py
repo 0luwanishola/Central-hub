@@ -13,6 +13,8 @@ def challenge(
     *,
     hints: list[str],
     success: str,
+    plan: Optional[list[str]] = None,
+    predict: Optional[dict] = None,
     concept: Optional[str] = None,
     difficulty: str = "beginner",
     xp: int = 15,
@@ -38,6 +40,7 @@ def challenge(
             "task": brief,
             "starter_code": starter,
             "hints": hints,
+            "plan": list(plan or []),
             "success": success,
         },
         "checks": dict(checks or {}),
@@ -45,6 +48,8 @@ def challenge(
     }
     if concept:
         item["concept"] = concept
+    if predict:
+        item["predict"] = predict
     if dataset:
         item["dataset"] = dataset
     if mode:

@@ -1,40 +1,37 @@
 Central_hub/
-├── README.md
+├── .gitignore
 ├── doc.md
-├── news.md
+├── README.md
 ├── run.txt
 ├── structure.txt
-├── .gitignore
-├── .env.northwind.example
-├── docker-compose.northwind.yml
-├── northwind.sql
-├── CODE_QUEST_IMPLEMENTATION_GUIDE.md
-├── PYTHON_SQL_WORKBENCH_UI_IMPLEMENTATION_GUIDE.md
-│
 ├── backend/
-│   ├── __init__.py
-│   ├── main.py
-│   ├── learning.py
-│   ├── northwind.py
-│   ├── northwind_curriculum.py
-│   ├── requirements.txt
+│   ├── .env
 │   ├── .env.example
+│   ├── __init__.py
+│   ├── coaching.py
+│   ├── guided_python.py
+│   ├── learning.py
+│   ├── main.py
+│   ├── python_runner.py
+│   ├── requirements.txt
+│   ├── sql_runner.py
+│   ├── curriculum/
+│   │   ├── __init__.py
+│   │   ├── grading.py
+│   │   ├── helpers.py
+│   │   ├── phases_python.py
+│   │   └── phases_sql.py
 │   ├── data/
 │   │   ├── learning.sqlite3
-│   │   └── news_cache.json
-│   ├── mysql/
-│   │   ├── 02-learning-views.sql
-│   │   └── 03-create-reader.sh
-│   ├── news/
+│   ├── datasets/
 │   │   ├── __init__.py
-│   │   ├── models.py
-│   │   ├── router.py
-│   │   ├── service.py
-│   │   └── storage.py
-│   ├── providers/
+│   │   ├── bookings.py
+│   │   ├── northwind.py
+│   │   ├── reviews.py
+│   │   ├── streamhub.py
+│   │   └── data/
+│   │       └── northwind.json
 │   │   ├── __init__.py
-│   │   ├── apifootball.py
-│   │   └── espn.py
 │   ├── pdftools/
 │   │   ├── __init__.py
 │   │   ├── core.py
@@ -42,84 +39,59 @@ Central_hub/
 │   │   ├── organise.py
 │   │   ├── overlay.py
 │   │   └── sign.py
-│   ├── static/
-│   │   ├── css/
-│   │   └── js/
-│   └── templates/
-│       ├── base.html
-│       ├── dashboard.html
-│       ├── dashboard_content.html
-│       ├── live_score.html
-│       ├── live_score_content.html
-│       ├── match.html
-│       ├── match_content.html
-│       ├── settings.html
-│       ├── settings_content.html
-│       ├── tool.html
-│       ├── tool_content.html
-│       ├── partials/
-│       │   └── sidebar.html
-│       └── pdf/
-│           ├── _macros.html
-│           ├── pdf-merge.html
-│           ├── pdf-page-organiser.html
-│           ├── pdf-split.html
-│           └── result.html
-│
+│   ├── providers/
+│   │   ├── __init__.py
+│   │   ├── apifootball.py
+│   │   └── espn.py
 └── frontend/
-    ├── index.html
-    ├── package.json
-    ├── package-lock.json
-    ├── vite.config.ts
-    ├── tsconfig.json
-    ├── tsconfig.app.json
-    ├── tsconfig.node.json
     ├── .env.example
+    ├── index.html
+    ├── package-lock.json
+    ├── package.json
+    ├── tsconfig.app.json
+    ├── tsconfig.json
+    ├── tsconfig.node.json
+    ├── vite.config.ts
     ├── public/
     │   └── sw.js
     └── src/
         ├── main.tsx
         ├── styles.css
         ├── vite-env.d.ts
-        ├── types/
-        │   └── index.ts
-        ├── ui/
-        │   └── Icon.tsx
-        ├── services/
-        │   └── apiClient.ts
         ├── app/
         │   ├── App.tsx
         │   └── AppShell.tsx
-        └── features/
-            ├── activities/
-            │   └── ActivitiesPage.tsx
-            ├── catalog/
-            │   └── CatalogPage.tsx
-            ├── learning/
-            │   ├── LearnPage.tsx
-            │   ├── SyntaxEditor.tsx
-            │   └── components/
-            │       ├── ChallengeBrief.tsx
-            │       ├── ChallengeExplorer.tsx
-            │       ├── LearningOutputPanel.tsx
-            │       ├── LearningWorkspace.tsx
-            │       ├── PythonWorkbench.tsx
-            │       ├── SchemaNavigator.tsx
-            │       └── SqlWorkbench.tsx
-            ├── live-score/
-            │   └── LiveScorePage.tsx
-            ├── news/
-            │   ├── index.ts
-            │   ├── LatestNews.tsx
-            │   ├── NewsItem.tsx
-            │   └── useNews.ts
-            ├── notes/
-            │   └── NotesPage.tsx
-            ├── settings/
-            │   └── SettingsPage.tsx
-            └── tools/
-                ├── ClientUtility.tsx
-                ├── PdfSignTool.tsx
-                ├── PdfTool.tsx
-                ├── regexWorker.ts
-                └── ToolPage.tsx
+        ├── features/
+        │   ├── activities/
+        │   │   └── ActivitiesPage.tsx
+        │   ├── catalog/
+        │   │   └── CatalogPage.tsx
+        │   ├── learning/
+        │   │   ├── LearnPage.tsx
+        │   │   ├── SyntaxEditor.tsx
+        │   │   └── components/
+        │   │       ├── ChallengeBrief.tsx
+        │   │       ├── ChallengeExplorer.tsx
+        │   │       ├── LearningOutputPanel.tsx
+        │   │       ├── PredictCheck.tsx
+        │   │       ├── SchemaNavigator.tsx
+        │   │       └── SqlWorkbench.tsx
+        │   ├── live-score/
+        │   │   └── LiveScorePage.tsx
+        │   │   ├── index.ts
+        │   ├── notes/
+        │   │   └── NotesPage.tsx
+        │   ├── settings/
+        │   │   └── SettingsPage.tsx
+        │   └── tools/
+        │       ├── ClientUtility.tsx
+        │       ├── PdfSignTool.tsx
+        │       ├── PdfTool.tsx
+        │       ├── regexWorker.ts
+        │       └── ToolPage.tsx
+        ├── services/
+        │   └── apiClient.ts
+        ├── types/
+        │   └── index.ts
+        └── ui/
+            └── Icon.tsx

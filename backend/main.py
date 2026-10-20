@@ -8,54 +8,49 @@ from typing import Optional
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Path as ApiPath, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, Field, HttpUrl
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile
 
 if __package__:
     # Support ``python -m backend.main`` from the project root.
-    from .news import FeedConfig, NewsStorage, fetch_all_feeds, router as news_router
-else:
-    # Also support ``python main.py`` / ``uvicorn main:app`` from backend/.
-    from news import FeedConfig, NewsStorage, fetch_all_feeds, router as news_router
-
-if __package__:
-    # Support ``python -m backend.main`` from the project root.
     from . import pdftools
     from . import learning
+    from .scratch import limits as scratch_limits
+    from .scratch import python_service as scratch_python
+    from .scratch import sql_service as scratch_sql
+    from .scratch import sql_workspaces as scratch_sql_workspaces
+    from .scratch.errors import ScratchError
     from .providers import (
         DOMESTIC,
         INTERNATIONAL,
         NotFound,
         ProviderError,
         active_provider,
-        clock_label,
         clean_scope,
-        has_score,
         is_live,
-        kickoff_label,
         provider_for,
     )
 else:
     # Also support ``python main.py`` / ``uvicorn main:app`` from backend/.
     import pdftools
     import learning
+    from scratch import limits as scratch_limits
+    from scratch import python_service as scratch_python
+    from scratch import sql_service as scratch_sql
+    from scratch import sql_workspaces as scratch_sql_workspaces
+    from scratch.errors import ScratchError
     from providers import (
         DOMESTIC,
         INTERNATIONAL,
         NotFound,
         ProviderError,
         active_provider,
-        clock_label,
         clean_scope,
-        has_score,
         is_live,
-        kickoff_label,
         provider_for,
     )
 
@@ -149,125 +144,37 @@ def group_matches(matches: list, scope: str) -> list:
 
 BASE_DIR = Path(__file__).parent
 
-# Provider/MySQL credentials live in a local .env file, never in the repo or browser.
+# Provider credentials live in a local .env file, never in the repo or browser.
 load_dotenv(BASE_DIR.parent / ".env", override=False)
 load_dotenv(BASE_DIR / ".env", override=False)
-
-
-# News feed configuration
-# Format: NEWS_FEEDS="name1|url1,max_items1;name2|url2,max_items2"
-# Example: NEWS_FEEDS="Ars Technica|https://arstechnica.com/feed/,20;The Verge|https://www.theverge.com/rss/index.xml,15"
-def parse_news_feeds() -> list[FeedConfig]:
-    """Parse NEWS_FEEDS environment variable into FeedConfig list."""
-    feeds_env = os.getenv("NEWS_FEEDS", "")
-    feeds: list[FeedConfig] = []
-
-    if not feeds_env.strip():
-        # Default feeds for tech/developer audience
-        default_feeds = [
-            ("Ars Technica", "https://arstechnica.com/feed/", 20),
-            ("The Verge", "https://www.theverge.com/rss/index.xml", 15),
-            ("Hacker News", "https://hnrss.org/frontpage", 20),
-        ]
-        for name, url, max_items in default_feeds:
-            feeds.append(FeedConfig(name=name, url=url, maxItems=max_items))
-        return feeds
-
-    for feed_spec in feeds_env.split(";"):
-        feed_spec = feed_spec.strip()
-        if not feed_spec:
-            continue
-        try:
-            # Format: name|url,max_items
-            name_part, rest = feed_spec.split("|", 1)
-            url_part, max_items_part = rest.rsplit(",", 1)
-            feeds.append(
-                FeedConfig(
-                    name=name_part.strip(),
-                    url=url_part.strip(),
-                    maxItems=int(max_items_part.strip()),
-                )
-            )
-        except (ValueError, IndexError) as e:
-            # Log but don't fail startup for malformed feed config
-            import logging
-
-            logging.warning("Invalid feed spec '%s': %s", feed_spec, e)
-            continue
-
-    return feeds
-
-
-NEWS_FEED_CONFIGS = parse_news_feeds()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """One shared HTTP client for outbound provider calls."""
     learning.initialize_learning_store()
+    # SQL Scratch tokens are process-local, so files left by an earlier process
+    # can never be valid again. Start from a clean server-owned root.
+    scratch_sql_workspaces.initialize()
     app.state.http = httpx.AsyncClient(timeout=15.0)
 
-    # Initialize news storage
-    cache_path = BASE_DIR / "data" / "news_cache.json"
-    app.state.news_storage = NewsStorage(cache_path, max_total_items=100, max_age_hours=48)
-
-    async def expire_pdf_files():
+    async def cleanup_temporary_files():
         while True:
             await asyncio.sleep(60)
             pdftools.cleanup_stale()
+            scratch_sql_workspaces.cleanup_expired()
 
-    async def refresh_news_feeds():
-        """Background task to refresh news feeds every 15 minutes."""
-        while True:
-            await asyncio.sleep(900)  # 15 minutes
-            try:
-                results = await fetch_all_feeds(app.state.http, NEWS_FEED_CONFIGS)
-                app.state.news_storage.update_from_feed_results(results, NEWS_FEED_CONFIGS)
-                success_count = sum(1 for r in results if r.success)
-                import logging
-
-                logging.info(
-                    "News feed refresh complete: %d/%d feeds succeeded",
-                    success_count,
-                    len(NEWS_FEED_CONFIGS),
-                )
-            except asyncio.CancelledError:
-                break
-            except Exception as e:
-                import logging
-
-                logging.error("News feed refresh failed: %s", e)
-
-    # Initial fetch on startup
-    try:
-        initial_results = await fetch_all_feeds(app.state.http, NEWS_FEED_CONFIGS)
-        app.state.news_storage.update_from_feed_results(initial_results, NEWS_FEED_CONFIGS)
-        success_count = sum(1 for r in initial_results if r.success)
-        import logging
-
-        logging.info("Initial news feed fetch: %d/%d feeds succeeded", success_count, len(NEWS_FEED_CONFIGS))
-    except Exception as e:
-        import logging
-
-        logging.error("Initial news feed fetch failed: %s", e)
-
-    cleanup_task = asyncio.create_task(expire_pdf_files())
-    news_refresh_task = asyncio.create_task(refresh_news_feeds())
+    cleanup_task = asyncio.create_task(cleanup_temporary_files())
 
     try:
         yield
     finally:
         cleanup_task.cancel()
-        news_refresh_task.cancel()
-        await asyncio.gather(cleanup_task, news_refresh_task, return_exceptions=True)
+        await asyncio.gather(cleanup_task, return_exceptions=True)
         await app.state.http.aclose()
 
 
 app = FastAPI(title="Central Hub", lifespan=lifespan)
-
-# Include news router
-app.include_router(news_router)
-
 
 class LearningSessionRequest(BaseModel):
     learner_id: Optional[str] = None
@@ -305,6 +212,42 @@ class LearningPreviewRequest(BaseModel):
     level: int = Field(ge=0)
     code: str = Field(max_length=5_000)
 
+
+class LearningReviewRequest(BaseModel):
+    learner_id: str = Field(min_length=1, max_length=64)
+
+
+class ScratchPythonRunRequest(BaseModel):
+    """Arbitrary Python source. Limits come from the server, never this body."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    code: str = Field(max_length=scratch_limits.PYTHON_MAX_SOURCE)
+    run_id: Optional[str] = Field(default=None, max_length=80)
+
+
+class ScratchSqlCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    learner_id: str = Field(min_length=1, max_length=64)
+    base: Optional[str] = Field(default="blank", max_length=64)
+
+
+class ScratchSqlRunRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    learner_id: str = Field(min_length=1, max_length=64)
+    workspace_id: str = Field(min_length=20, max_length=128)
+    sql: str = Field(max_length=scratch_limits.SQL_MAX_SOURCE)
+
+
+class ScratchSqlWorkspaceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    learner_id: str = Field(min_length=1, max_length=64)
+    workspace_id: str = Field(min_length=20, max_length=128)
+
+
 # The standalone Vite app uses a separate origin during development. Keep these
 # origins explicit; production origins belong in deployment configuration.
 frontend_origins = os.getenv(
@@ -320,25 +263,11 @@ app.add_middleware(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in frontend_origins.split(",") if origin.strip()],
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["*"],
 )
 
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-
-# Created on startup so the mount below cannot fail when the directory is absent
-# from a fresh checkout (it holds no assets yet, so it is not always tracked).
-STATIC_DIR = BASE_DIR / "static"
-STATIC_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-
-# Tool registry - add your utilities here
-#
-# PDF entries carry two optional keys:
-#   "ready"    - True when the tool has an implementation in backend/pdftools/.
-#   "requires" - an external program or credential the tool cannot work without.
-#                Only set this on tools that are deliberately deferred, so the
-#                placeholder can say why it is not available.
+# Canonical backend catalog: readiness and execution are derived below.
 TOOLS = [
     {"id": "json-formatter", "name": "JSON Formatter", "description": "Format, validate, and minify JSON", "icon": "📝", "category": "data"},
     {"id": "base64-encoder", "name": "Base64 Encoder/Decoder", "description": "Encode/decode Base64 strings", "icon": "🔐", "category": "encoding"},
@@ -395,8 +324,6 @@ TOOLS = [
     {"id": "pdf-compare", "name": "Compare PDFs", "description": "Show what changed between two versions", "icon": "🔍", "category": "pdf"},
 ]
 
-CATEGORIES = sorted(set(t["category"] for t in TOOLS))
-
 # Lightweight utilities run in the browser. Provider backed and PDF tools stay
 # on the API, with the catalog carrying the execution mode for the frontend.
 CLIENT_TOOL_IDS = {
@@ -409,11 +336,8 @@ CLIENT_TOOL_IDS = {
     "color-picker",
     "qr-generator",
 }
-# Tools with bespoke routes instead of one run(inputs, params, output) handler.
-#
-# Signing needs three requests -- preview the page, page through to the right one,
-# then apply -- so it cannot fit the single-request shape the generic route
-# assumes. Listing it here is what marks it API-backed and ready in both catalogs.
+# Signing needs preview, page navigation, and apply endpoints, so it uses
+# dedicated routes instead of the generic one-request PDF handler.
 PDF_CUSTOM_ROUTES = {"pdf-sign"}
 
 for _tool in TOOLS:
@@ -431,60 +355,6 @@ for _tool in TOOLS:
         _tool.setdefault("ready", False)
         _tool["execution"] = "unavailable"
 
-# Category key used by the legacy /pdf compatibility redirect.
-PDF_CATEGORY = "pdf"
-
-# PDF tools with a classic page fragment, mapped to the file types the browser
-# should offer in the picker. A tool id in here must have a matching
-# backend/templates/pdf/<id>.html (asserted below with the other PDF invariants);
-# /tool/{tool_id} serves it instead of the shared placeholder. Edit tools and
-# signing live in the standalone app and have no classic page.
-PDF_PAGES = {
-    "pdf-merge": ".pdf,application/pdf",
-    "pdf-split": ".pdf,application/pdf",
-    "pdf-page-organiser": ".pdf,application/pdf",
-}
-
-CATEGORY_ICONS = {
-    "crypto": "🔑",
-    "data": "🗂",
-    "design": "🎨",
-    "encoding": "🔐",
-    "generators": "✨",
-    "pdf": "📄",
-    "sports": "⚽",
-    "text": "🔍",
-    "time": "⏰",
-}
-
-
-def get_category_icon(category: str) -> str:
-    """Icon for a category, used by the sidebar in the page templates."""
-    return CATEGORY_ICONS.get(category, "🧰")
-
-
-def category_url(category: str) -> str:
-    """Build the dashboard URL for any catalog category."""
-    return f"/?category={category}"
-
-
-templates.env.globals["category_url"] = category_url
-templates.env.globals["get_category_icon"] = get_category_icon
-templates.env.globals["clock_label"] = clock_label
-templates.env.globals["has_score"] = has_score
-templates.env.globals["kickoff_label"] = kickoff_label
-
-
-def filter_by_category(category: Optional[str]) -> list:
-    if not category or category == "all":
-        return TOOLS
-    return [t for t in TOOLS if t["category"] == category]
-
-
-def count_ready(tools: list) -> int:
-    return sum(1 for t in tools if t.get("ready"))
-
-
 def _form_int(form, key: str, default: int) -> int:
     """An integer form field, falling back when it is blank or not a number.
 
@@ -500,180 +370,13 @@ def _form_int(form, key: str, default: int) -> int:
         return default
 
 
-def render(request: Request, page: str, content: str, context: dict):
-    """Serve a full page normally, but only the swappable fragment to htmx.
-
-    htmx sets HX-Request on every request it makes. Returning the whole
-    document for those would let it inject a second copy of the layout into
-    #main-content, so those requests get the content fragment instead.
-    """
-    if request.headers.get("hx-request") == "true":
-        return templates.TemplateResponse(request, content, context)
-    return templates.TemplateResponse(request, page, context)
-
-
-@app.get("/", response_class=HTMLResponse)
-async def dashboard(request: Request, category: Optional[str] = None):
-    active = category or "all"
-    tools = filter_by_category(active)
-    return render(
-        request,
-        page="dashboard.html",
-        content="dashboard_content.html",
-        context={
-            "tools": tools,
-            "ready_count": count_ready(tools),
-            # Full catalog is kept separate so the sidebar can still show the
-            # per-category totals while a filter is applied.
-            "all_tools": TOOLS,
-            "categories": CATEGORIES,
-            "category": active,
-            "current_category": active,
-        },
-    )
-
-
-@app.get("/pdf", response_class=HTMLResponse)
-async def legacy_pdf_hub():
-    """Keep old bookmarks working while showing PDF in the regular category grid."""
-    return RedirectResponse(f"/?category={PDF_CATEGORY}", status_code=303)
-
-
-@app.get("/settings", response_class=HTMLResponse)
-async def settings_page(request: Request):
-    context = {
-        "categories": CATEGORIES,
-        "all_tools": TOOLS,
-        "current_category": "settings",
-    }
-    return render(
-        request,
-        page="settings.html",
-        content="settings_content.html",
-        context=context,
-    )
-
-@app.get("/tool/live-score", response_class=HTMLResponse)
-async def live_score_page(
-    request: Request, day: Optional[str] = None, scope: Optional[str] = None
-):
-    """LiveScore board. Provider failures are shown in the page, not raised.
-
-    ``day`` selects which day's fixtures to show and ``scope`` narrows to the
-    domestic or international competitions, so past and upcoming matches are both
-    reachable from the page itself rather than only by editing the URL.
-
-    NOTE: this route must stay ABOVE /tool/{tool_id}. Starlette matches routes in
-    declaration order, so the catch-all would otherwise claim "live-score" and
-    render the generic placeholder page.
-    """
-    matches: list = []
-    error: Optional[str] = None
-    provider = active_provider()
-    day = resolve_day(day)
-    scope = clean_scope(scope)
-
-    try:
-        matches = await provider.fixtures_for_day(request.app.state.http, day, scope)
-    except ProviderError as exc:
-        error = str(exc)
-
-    sections = group_matches(matches, scope)
-
-    return render(
-        request,
-        page="live_score.html",
-        content="live_score_content.html",
-        context={
-            "matches": matches,
-            "sections": sections,
-            "grouped": scope == "all",
-            "error": error,
-            "day": day,
-            "today": date.today().isoformat(),
-            "prev_day": shift_day(day, -1),
-            "next_day": shift_day(day, 1),
-            "scope": scope,
-            "live_count": sum(1 for m in matches if is_live(m)),
-            "provider": provider_name(provider),
-            "categories": CATEGORIES,
-            "all_tools": TOOLS,
-            "current_category": "sports",
-        },
-    )
-
-
-@app.get("/match/{fixture_id}", response_class=HTMLResponse)
-async def match_page(request: Request, fixture_id: str):
-    """Match detail: scoreline, event timeline and lineups.
-
-    The id carries its provider prefix, so this resolves the right module rather
-    than whichever provider happens to be configured.
-    """
-    error: Optional[str] = None
-    match: Optional[dict] = None
-    provider = provider_for(fixture_id)
-
-    try:
-        match = await provider.match_detail(request.app.state.http, fixture_id)
-    except NotFound:
-        return HTMLResponse("Match not found", status_code=404)
-    except ProviderError as exc:
-        error = str(exc)
-
-    return render(
-        request,
-        page="match.html",
-        content="match_content.html",
-        context={
-            "match": match,
-            "fixture_id": fixture_id,
-            "error": error,
-            "provider": provider_name(provider),
-            "categories": CATEGORIES,
-            "all_tools": TOOLS,
-            # A match belongs to no category, so no sidebar entry is highlighted.
-            "current_category": None,
-        },
-    )
-
-
-# NOTE: keep this catch-all BELOW any specific /tool/<name> route. Starlette
-# matches routes in declaration order, so a specific route declared after this
-# one would never be reached.
-@app.get("/tool/{tool_id}", response_class=HTMLResponse)
-async def tool_page(request: Request, tool_id: str):
-    tool = next((t for t in TOOLS if t["id"] == tool_id), None)
-    if not tool:
-        return HTMLResponse("Tool not found", status_code=404)
-
-    # A PDF tool gets its own fragment listing exactly which files and options it
-    # needs; everything else falls through to the shared placeholder.
-    content = f"pdf/{tool_id}.html" if tool_id in PDF_PAGES else "tool_content.html"
-    return render(
-        request,
-        page="tool.html",
-        content=content,
-        context={
-            "tool": tool,
-            # The full-page render includes this same fragment, so a reload keeps
-            # the tool's form instead of dropping back to the shared placeholder.
-            "content": content,
-            "categories": CATEGORIES,
-            "all_tools": TOOLS,
-            "accept": PDF_PAGES.get(tool_id),
-            "multiple": tool_id == "pdf-merge",
-            "current_category": tool["category"],
-        },
-    )
-
-
 @app.get("/api/tools")
 async def api_tools(category: Optional[str] = None):
-    # Keep the legacy Jinja catalog's old readiness badges compatible while the
-    # standalone app receives availability based on its browser/API handlers.
+    # Report availability based on the browser/API handlers used by the app.
     response = []
-    for tool in filter_by_category(category):
+    for tool in TOOLS:
+        if category and tool["category"] != category:
+            continue
         public_tool = dict(tool)
         public_tool["ready"] = public_tool["execution"] in {"client", "api"}
         response.append(public_tool)
@@ -730,9 +433,70 @@ def api_learning_preview(payload: LearningPreviewRequest):
         raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
+@app.post("/api/learning/review")
+def api_learning_review(payload: LearningReviewRequest):
+    """Mixed practice set: hint-assisted and oldest completed challenges across tracks."""
+    try:
+        return learning.review_set(payload.learner_id)
+    except learning.LearningError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+# --------------------------------------------------------------------------
+# Code Quest Scratch
+# --------------------------------------------------------------------------
+
+def _raise_scratch_error(exc: ScratchError) -> None:
+    raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+@app.post("/api/learning/scratch/python/run")
+def api_scratch_python_run(payload: ScratchPythonRunRequest):
+    """Run one complete script. Never grades, awards XP, or writes progress."""
+    try:
+        return scratch_python.run_scratch(payload.code, payload.run_id)
+    except ScratchError as exc:
+        _raise_scratch_error(exc)
+
+
+@app.post("/api/learning/scratch/sql/workspaces")
+def api_scratch_sql_create(payload: ScratchSqlCreateRequest):
+    try:
+        return scratch_sql_workspaces.create_workspace(payload.learner_id, payload.base or "blank")
+    except ScratchError as exc:
+        _raise_scratch_error(exc)
+
+
+@app.post("/api/learning/scratch/sql/run")
+def api_scratch_sql_run(payload: ScratchSqlRunRequest):
+    try:
+        return scratch_sql.run_script(payload.learner_id, payload.workspace_id, payload.sql)
+    except ScratchError as exc:
+        _raise_scratch_error(exc)
+
+
+@app.post("/api/learning/scratch/sql/reset")
+def api_scratch_sql_reset(payload: ScratchSqlWorkspaceRequest):
+    try:
+        return scratch_sql_workspaces.reset_workspace(payload.learner_id, payload.workspace_id)
+    except ScratchError as exc:
+        _raise_scratch_error(exc)
+
+
+@app.delete("/api/learning/scratch/sql/workspaces/{workspace_id}")
+def api_scratch_sql_delete(
+    workspace_id: str = ApiPath(min_length=20, max_length=128),
+    learner_id: str = Query(min_length=1, max_length=64),
+):
+    try:
+        return scratch_sql_workspaces.delete_workspace(learner_id, workspace_id)
+    except ScratchError as exc:
+        _raise_scratch_error(exc)
+
+
 @app.get("/api/live")
 async def api_live(day: Optional[str] = None, scope: Optional[str] = None):
-    """Normalised scoreboard as JSON, same shape the page renders."""
+    """Return fixtures in the provider-normalized API shape."""
     provider = active_provider()
     day = resolve_day(day)
     scope = clean_scope(scope)
@@ -770,16 +534,8 @@ async def api_match(fixture_id: str):
 # PDF tools
 # --------------------------------------------------------------------------
 
-def _pdf_wants_json(request: Request) -> bool:
-    return "application/json" in request.headers.get("accept", "").lower()
-
-
-def _pdf_error(request: Request, message: str, status_code: int = 400):
-    if _pdf_wants_json(request):
-        return JSONResponse({"detail": message}, status_code=status_code)
-    response = pdftools.error_response(message)
-    response.status_code = status_code
-    return response
+def _pdf_error(_request: Request, message: str, status_code: int = 400):
+    return JSONResponse({"detail": message}, status_code=status_code)
 
 
 @app.exception_handler(RequestBodyTooLarge)
@@ -791,49 +547,22 @@ async def request_body_too_large(request: Request, _exc: RequestBodyTooLarge):
     )
 
 
-def _pdf_result(request: Request, download_name: str, token: str):
-    if _pdf_wants_json(request):
-        return JSONResponse(
-            {
-                "download_url": f"/api/pdf/download/{token}",
-                "filename": download_name,
-                "expires_in_seconds": pdftools.RESULTS_TTL,
-            }
-        )
-    return templates.TemplateResponse(
-        request, "pdf/result.html", {"download_name": download_name, "token": token}
+def _pdf_result(download_name: str, token: str):
+    return JSONResponse(
+        {
+            "download_url": f"/api/pdf/download/{token}",
+            "filename": download_name,
+            "expires_in_seconds": pdftools.RESULTS_TTL,
+        }
     )
 
-# Every tool with a classic page must have both somewhere for its form to POST and
-# the fragment itself on disk. A missing handler or template only fails once
-# someone uses the tool, so both are checked at import time.
-assert PDF_PAGES.keys() <= (pdftools.HANDLERS.keys() | PDF_CUSTOM_ROUTES), (
-    "PDF_PAGES entries with no handler: "
-    f"{sorted(PDF_PAGES.keys() - pdftools.HANDLERS.keys() - PDF_CUSTOM_ROUTES)}"
-)
-_missing_pdf_templates = sorted(
-    tool_id
-    for tool_id in PDF_PAGES
-    if not (BASE_DIR / "templates" / "pdf" / f"{tool_id}.html").exists()
-)
-assert not _missing_pdf_templates, (
-    f"PDF_PAGES entries with no template: {_missing_pdf_templates}"
-)
-
-# The download route is declared first so "download" can never be read as a tool id.
 @app.get("/api/pdf/download/{token}")
-async def download_pdf_result(request: Request, token: str):
+async def download_pdf_result(_request: Request, token: str):
     """Serve a finished PDF, once. The token is consumed by this request."""
     result = pdftools.take_result(token)
     if result is None:
-        if _pdf_wants_json(request):
-            return JSONResponse(
-                {"detail": "That download has expired or was already used."},
-                status_code=404,
-            )
-        return HTMLResponse(
-            "That download has expired or was already used. Run the tool again.",
-            status_code=404,
+        return JSONResponse(
+            {"detail": "That download has expired or was already used."}, status_code=404
         )
     return pdftools.download_response(result)
 
@@ -886,7 +615,7 @@ async def pdf_sign_preview(request: Request):
 
 
 @app.get("/api/pdf/pdf-sign/page/{token}", response_class=JSONResponse)
-async def pdf_sign_page(request: Request, token: str, page: Optional[int] = None):
+async def pdf_sign_page(_request: Request, token: str, page: Optional[int] = None):
     """Re-render a different page of a previewed PDF, with the same payload shape."""
     draft = pdftools.find_draft(token)
     if draft is None:
@@ -940,23 +669,12 @@ async def pdf_sign_apply(request: Request):
 
     # The draft's own tree belongs to it and was consumed on success.
     pdftools.remove_tree(draft.path.parent)
-    return _pdf_result(request, download_name, download_token)
+    return _pdf_result(download_name, download_token)
 
 
 @app.post("/api/pdf/{tool_id}", response_class=JSONResponse)
 async def run_pdf_tool(tool_id: str, request: Request):
-    """Process a PDF upload and return JSON or a legacy htmx fragment.
-
-    The form is read by hand rather than through declared parameters: every tool
-    wants a different set of fields, and one route that accepts whatever arrives
-    is less code than a signature per tool.
-
-    Standalone clients request JSON containing the download URL and filename.
-    Existing htmx pages continue to receive a small HTML fragment.
-
-    NOTE: these routes are POST-only and live under /api, so they cannot collide
-    with the GET /tool/{tool_id} placeholder above.
-    """
+    """Process a PDF upload and return a JSON download descriptor."""
     entry = pdftools.HANDLERS.get(tool_id)
     if entry is None:
         return _pdf_error(request, "That PDF tool is not implemented yet.", 501)
@@ -996,7 +714,7 @@ async def run_pdf_tool(tool_id: str, request: Request):
 
     # Inputs are no longer needed. The result tree now belongs to the store.
     pdftools.remove_tree(inputs_dir)
-    return _pdf_result(request, download_name, token)
+    return _pdf_result(download_name, token)
 
 
 if __name__ == "__main__":

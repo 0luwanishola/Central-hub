@@ -1,10 +1,10 @@
 import type { LearningChallenge, LearningDataset, LearningDifficulty } from "../../../types";
 import { Icon } from "../../../ui/Icon";
+import { PredictCheck } from "./PredictCheck";
 
 interface ChallengeBriefProps {
   challenge: LearningChallenge;
   isCleared: boolean;
-  trackId: "python" | "sql" | "northwind_mysql" | "northwind_python";
 }
 
 const tierNames: Record<LearningDifficulty, string> = {
@@ -37,8 +37,10 @@ function DatasetTable({ dataset }: { dataset: LearningDataset }) {
   );
 }
 
-export function ChallengeBrief({ challenge, isCleared, trackId }: ChallengeBriefProps) {
+export function ChallengeBrief({ challenge, isCleared }: ChallengeBriefProps) {
   const coding = challenge.coding;
+  const sources = challenge.data_sources ?? [];
+  const rowLimit = sources.find((source) => source.limit)?.limit;
 
   return (
     <div className="challenge-brief">
@@ -49,6 +51,7 @@ export function ChallengeBrief({ challenge, isCleared, trackId }: ChallengeBrief
         </div>
         <div className="challenge-badges">
           <span className={`difficulty-badge difficulty-${challenge.difficulty}`}>{tierNames[challenge.difficulty]}</span>
+          {challenge.capstone && <span className="difficulty-badge">Capstone</span>}
           {isCleared && <span className="completed-badge">Cleared</span>}
         </div>
       </div>
@@ -75,6 +78,8 @@ export function ChallengeBrief({ challenge, isCleared, trackId }: ChallengeBrief
         </div>
       )}
 
+      {challenge.predict && <PredictCheck key={challenge.id} drill={challenge.predict} />}
+
       {challenge.metric_contract && (
         <details className="metric-contract">
           <summary>Metric definition and assumptions</summary>
@@ -85,10 +90,20 @@ export function ChallengeBrief({ challenge, isCleared, trackId }: ChallengeBrief
       <div className="coding-task">
         <span className="coding-task-label">Your task</span>
         <p>{coding.task}</p>
-        {challenge.data_sources && (
+        {sources.length > 0 && (
           <p className="data-source-note">
-            Relevant tables: {challenge.data_sources.map((source) => <code key={source.name}>{source.name}</code>)}
-            {trackId === "northwind_python" && " (up to 100 rows per table)"}
+            Relevant data:{" "}
+            {sources.map((source) => (
+              <code key={`${source.name}-${source.column ?? source.variable ?? ""}`}>
+                {source.column ? `${source.name}.${source.column}` : source.name}
+              </code>
+            ))}
+            {rowLimit && ` (up to ${rowLimit} rows)`}
+          </p>
+        )}
+        {challenge.dataset && (
+          <p className="data-source-note">
+            Dataset: <code>{challenge.dataset.name}</code> — explore its tables in the navigator.
           </p>
         )}
         {challenge.documentation_url && (

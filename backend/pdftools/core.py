@@ -1,27 +1,4 @@
-"""Shared plumbing for the PDF tools.
-
-Every PDF tool does the same four things: accept one or more uploads, write them
-to a temp directory, transform them, and hand the result back as a download. Only
-the transform differs, so each tool module supplies just that and everything else
-lives here.
-
-Two decisions worth knowing before changing this module:
-
-**Uploads are streamed to disk, never buffered in memory.** These are this app's
-first file uploads and a PDF can be far larger than anything else it handles.
-``save_uploads`` writes in chunks and checks the budget as it goes, so an
-oversized file is rejected part-way instead of after the whole thing was read.
-
-**Results are passed back as a download token, not streamed through the POST.**
-Legacy htmx requests receive a small HTML fragment containing a link to
-``GET /api/pdf/download/{token}``. Standalone clients request JSON with that same
-download URL and the filename. Both let the browser handle the final download.
-
-Inputs are deleted as soon as processing finishes. Results live until they are
-downloaded or ``RESULTS_TTL`` expires. Token and workspace operations sweep stale
-entries, and the app also runs a periodic cleanup so abandoned files expire while
-the service is idle.
-"""
+"""Shared upload, workspace, and result handling for the PDF API."""
 
 from __future__ import annotations
 
@@ -33,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional
 
-from fastapi.responses import FileResponse, HTMLResponse, Response
+from fastapi.responses import FileResponse, Response
 from starlette.background import BackgroundTask
 
 # A total cap across all files in one request. Generous for the merge and image
@@ -261,17 +238,6 @@ def _unique_name(folder: Path, name: str) -> str:
             return numbered
 
     raise ToolError("Too many files with the same name.")
-
-
-def error_response(message: str) -> HTMLResponse:
-    """Render a message inside the tool panel instead of replacing the page."""
-    safe = (
-        message.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-        .replace('"', "&quot;")
-    )
-    return HTMLResponse(f'<div class="pdf-error" role="alert">{safe}</div>', status_code=400)
 
 
 def download_response(result: Result) -> Response:

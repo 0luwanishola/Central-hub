@@ -39,6 +39,8 @@ _SCRATCH_STARTS = _READ_STARTS + (
 )
 
 _MAX_SOURCE = 5_000
+_TRANSACTION_KEYWORDS = {"BEGIN", "COMMIT", "ROLLBACK", "SAVEPOINT", "RELEASE"}
+_DENIED_KEYWORDS = {"ATTACH", "DETACH", "PRAGMA", "VACUUM"}
 
 
 class SqlRunError(Exception):
@@ -77,6 +79,7 @@ class SqlOutcome:
 
 
 def _strip_leading_comments(statement: str) -> str:
+    statement = statement.lstrip()
     while True:
         if statement.startswith("--"):
             newline = statement.find("\n")
@@ -101,6 +104,11 @@ def _starts_allowed(statement: str, mode: str) -> bool:
     return keyword in _READ_STARTS
 
 
+def _has_sql_content(statement: str) -> bool:
+    """True when a candidate contains more than comments and semicolons."""
+    return bool(_strip_leading_comments(statement).strip(" ;\t\r\n"))
+
+
 def split_statements(source: str) -> list[str]:
     """Split a script into statements using SQLite's own completeness checker."""
     statements: list[str] = []
@@ -109,21 +117,67 @@ def split_statements(source: str) -> list[str]:
         buffer += char
         if char == ";" and sqlite3.complete_statement(buffer):
             candidate = buffer.strip()
-            if candidate.strip(";").strip():
+            if _has_sql_content(candidate):
                 statements.append(candidate)
             buffer = ""
     remainder = buffer.strip()
-    if remainder and remainder.strip(";").strip():
+    if _has_sql_content(remainder):
         statements.append(remainder)
     return statements
 
 
-def _authorizer(mode: str):
+def validate_workspace_script(
+    source: str,
+    *,
+    max_statements: int,
+    max_source: int = _MAX_SOURCE,
+) -> list[str]:
+    """Validate a Scratch workspace script without executing it.
+
+    Scratch is multi-statement and writable, but the service owns transactions.
+    The statement allowlist and the authorizer are both enforced server-side.
+    """
+    if not source.strip():
+        raise SqlRunError("Write a SQL script first.")
+    if len(source) > max_source:
+        raise SqlRunError(f"Keep SQL under {max_source:,} characters.")
+
+    statements = split_statements(source)
+    if not statements:
+        raise SqlRunError("Write a SQL script first.")
+    if len(statements) > max_statements:
+        raise SqlRunError(f"Keep this run to {max_statements:,} statements or fewer.")
+
+    for statement in statements:
+        head = _strip_leading_comments(statement).lstrip()
+        match = re.match(r"(?i)([A-Za-z]+)", head)
+        keyword = match.group(1).upper() if match else ""
+        if keyword in _TRANSACTION_KEYWORDS:
+            raise SqlRunError(
+                "Scratch runs are atomic and managed by the workspace. "
+                "BEGIN, COMMIT, ROLLBACK, SAVEPOINT, and RELEASE are not available here."
+            )
+        if keyword in _DENIED_KEYWORDS:
+            raise SqlRunError(f"{keyword} is not available in the SQL Scratch workspace.")
+        if not _starts_allowed(statement, SCRATCH):
+            raise SqlRunError(
+                "This workspace accepts SELECT queries plus schema and data changes "
+                "(CREATE, INSERT, UPDATE, DELETE, DROP, ALTER, REPLACE, ANALYZE, REINDEX)."
+            )
+    return statements
+
+
+def _authorizer(
+    mode: str,
+    *,
+    allow_transaction_control: bool = True,
+    allow_temp_schema: bool = True,
+):
     allowed = {sqlite3.SQLITE_SELECT, sqlite3.SQLITE_READ}
     if hasattr(sqlite3, "SQLITE_RECURSIVE"):
         allowed.add(sqlite3.SQLITE_RECURSIVE)
     if mode == SCRATCH:
-        for name in (
+        names = [
             "SQLITE_INSERT",
             "SQLITE_UPDATE",
             "SQLITE_DELETE",
@@ -134,17 +188,23 @@ def _authorizer(mode: str):
             "SQLITE_CREATE_VIEW",
             "SQLITE_DROP_VIEW",
             "SQLITE_ALTER_TABLE",
-            "SQLITE_SAVEPOINT",
-            "SQLITE_TRANSACTION",
             "SQLITE_REINDEX",
             "SQLITE_ANALYZE",
-            "SQLITE_CREATE_TEMP_TABLE",
-            "SQLITE_DROP_TEMP_TABLE",
-            "SQLITE_CREATE_TEMP_INDEX",
-            "SQLITE_DROP_TEMP_INDEX",
-            "SQLITE_CREATE_TEMP_VIEW",
-            "SQLITE_DROP_TEMP_VIEW",
-        ):
+        ]
+        if allow_transaction_control:
+            names.extend(("SQLITE_SAVEPOINT", "SQLITE_TRANSACTION"))
+        if allow_temp_schema:
+            names.extend(
+                (
+                    "SQLITE_CREATE_TEMP_TABLE",
+                    "SQLITE_DROP_TEMP_TABLE",
+                    "SQLITE_CREATE_TEMP_INDEX",
+                    "SQLITE_DROP_TEMP_INDEX",
+                    "SQLITE_CREATE_TEMP_VIEW",
+                    "SQLITE_DROP_TEMP_VIEW",
+                )
+            )
+        for name in names:
             action = getattr(sqlite3, name, None)
             if action is not None:
                 allowed.add(action)
@@ -159,6 +219,16 @@ def _authorizer(mode: str):
         return sqlite3.SQLITE_DENY
 
     return authorize
+
+
+def workspace_authorizer():
+    """Policy for the persistent SQL Scratch workspace.
+
+    The scratch service owns the transaction and the connection lifetime, so
+    learner-issued transaction control and temp-schema objects are denied. The
+    challenge runner keeps its existing behavior.
+    """
+    return _authorizer(SCRATCH, allow_transaction_control=False, allow_temp_schema=False)
 
 
 def _translate_error(exc: sqlite3.Error) -> str:

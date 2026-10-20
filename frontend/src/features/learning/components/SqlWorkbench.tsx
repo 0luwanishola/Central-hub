@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from "react";
-import type { LearningSession, LearningTrackId, LearningChallenge, LearningSchema, LearningCodeResult } from "../../../types";
+import type { LearningSession, LearningTrackId, LearningChallenge, LearningCodeResult, LearningReviewItem } from "../../../types";
 import { SyntaxEditor } from "../SyntaxEditor";
 import { ChallengeBrief } from "./ChallengeBrief";
 import { SchemaNavigator } from "./SchemaNavigator";
@@ -7,7 +7,7 @@ import { ChallengeExplorer } from "./ChallengeExplorer";
 import { LearningOutputPanel } from "./LearningOutputPanel";
 import { Icon } from "../../../ui/Icon";
 
-interface SqlWorkbenchProps {
+export interface SqlWorkbenchProps {
   session: LearningSession;
   trackId: LearningTrackId;
   challenge: LearningChallenge;
@@ -43,15 +43,52 @@ interface SqlWorkbenchProps {
   setChallengeSearch: (value: string) => void;
   selectLevel: (level: number) => void;
   selectTrack: (trackId: LearningTrackId) => void;
-  selectCurriculum: (curriculumId: "legacy" | "northwind_data") => void;
-  curriculumId: "legacy" | "northwind_data";
-  curriculumTracks: { id: LearningTrackId; name: string; challenges: LearningChallenge[]; summary: string }[];
   completed: number[];
-  schema: LearningSchema;
   codeMutationPending: boolean;
   previewMutationPending: boolean;
-  isMySQLTrack: boolean;
-  isPythonTrack: boolean;
+  reviewItems: LearningReviewItem[];
+  onOpenReviewItem: (item: LearningReviewItem) => void;
+}
+
+function runnerLabels(challenge: LearningChallenge) {
+  switch (challenge.runner) {
+    case "python_guided":
+      return {
+        sandbox: "Guided Python runner: instant feedback inside a small, safe language subset",
+        connection: "Guided Python · instant feedback",
+        badge: "Sandboxed",
+      };
+    case "python_real":
+      return {
+        sandbox: "Real Python: an isolated subprocess with a read-only dataset bridge",
+        connection: "CPython subprocess · read-only datasets",
+        badge: "Isolated runner",
+      };
+    case "sqlite":
+      return challenge.mode === "scratch"
+        ? {
+            sandbox: "SQLite scratch sandbox: a disposable copy you can create tables and update rows in",
+            connection: "SQLite scratch · disposable copy",
+            badge: "Scratch sandbox",
+          }
+        : {
+            sandbox: "SQLite read-only sandbox: queries run against the shared datasets",
+            connection: "SQLite · read-only datasets",
+            badge: "Read-only sandbox",
+          };
+    default:
+      return challenge.coding.language === "python"
+        ? {
+            sandbox: "Python sandbox: supported language subset with bounded execution",
+            connection: "Restricted Python runner",
+            badge: "Read-only sandbox",
+          }
+        : {
+            sandbox: "SQL sandbox: read-only queries on the lesson sample tables",
+            connection: "SQLite sample tables",
+            badge: "Read-only sandbox",
+          };
+  }
 }
 
 export function SqlWorkbench(props: SqlWorkbenchProps) {
@@ -91,37 +128,25 @@ export function SqlWorkbench(props: SqlWorkbenchProps) {
     setChallengeSearch,
     selectLevel,
     selectTrack,
-    selectCurriculum,
-    curriculumId,
-    curriculumTracks,
     completed,
-    schema,
     codeMutationPending,
     previewMutationPending,
-    isMySQLTrack,
-    isPythonTrack,
+    reviewItems,
+    onOpenReviewItem,
   } = props;
 
   const track = session.tracks.find((t) => t.id === trackId)!;
   const coding = challenge.coding;
   const hints = coding.hints ?? [];
+  const plan = coding.plan ?? [];
   const [navigatorCollapsed, setNavigatorCollapsed] = useState(false);
 
-  // Determine sandbox label based on track
-  const sandboxLabel = isMySQLTrack
-    ? "MySQL 8.0 sandbox: read-only queries against curated Northwind views"
-    : isPythonTrack && trackId === "northwind_python"
-      ? "Restricted Python sandbox: bounded Northwind row dictionaries"
-      : isPythonTrack
-        ? "Python sandbox: supported language subset with bounded execution"
-        : "SQL sandbox: read-only queries on the lesson sample tables";
-  const connectionLabel = isMySQLTrack
-    ? "MySQL 8.0 · SELECT-only learning views"
-    : trackId === "northwind_python"
-      ? "Northwind read-only table API"
-      : isPythonTrack
-        ? "Restricted Python runner"
-        : "SQLite legacy sandbox";
+  const isPathTrack = track.kind === "path";
+  const labels = runnerLabels(challenge);
+  const challengeIndex = track.challenges.findIndex((item) => item.id === challenge.id);
+  const phase = track.phases?.find((item) => item.id === challenge.phase_id);
+  const clearedTotal = Object.values(session.progress).reduce((total, levels) => total + (levels?.length ?? 0), 0);
+  const challengeTotal = session.tracks.reduce((total, t) => total + t.challenges.length, 0);
 
   return (
     <div className="sql-workbench">
@@ -133,30 +158,14 @@ export function SqlWorkbench(props: SqlWorkbenchProps) {
         </div>
         <div className="workbench-scorebar">
           <div><span className="quest-score-icon"><Icon name="trophy" /></span><span><strong>{session.xp} XP</strong><small>Total points</small></span></div>
-          <div><span className="quest-score-icon"><Icon name="check" /></span><span><strong>{Object.values(session.progress).reduce((total, levels) => total + levels.length, 0)} / {session.tracks.reduce((total, t) => total + t.challenges.length, 0)}</strong><small>Challenges cleared</small></span></div>
+          <div><span className="quest-score-icon"><Icon name="check" /></span><span><strong>{clearedTotal} / {challengeTotal}</strong><small>Challenges cleared</small></span></div>
         </div>
       </header>
 
-      {/* Curriculum and track switchers */}
+      {/* Track switcher */}
       <div className="workbench-switchers">
-        <div className="curriculum-switcher" role="group" aria-label="Choose a learning curriculum">
-          {session.curricula.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              aria-pressed={curriculumId === item.id}
-              className={`curriculum-tab ${curriculumId === item.id ? "curriculum-tab-active" : ""}`}
-              onClick={() => selectCurriculum(item.id)}
-              disabled={codeMutationPending || previewMutationPending}
-            >
-              <strong>{item.name}</strong>
-              <small>{item.summary}</small>
-            </button>
-          ))}
-        </div>
-
-        <div className="track-switcher" role="group" aria-label="Choose a track in this curriculum">
-          {curriculumTracks.map((item) => (
+        <div className="track-switcher" role="group" aria-label="Choose a learning track">
+          {session.tracks.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -165,7 +174,7 @@ export function SqlWorkbench(props: SqlWorkbenchProps) {
               onClick={() => selectTrack(item.id)}
               disabled={codeMutationPending || previewMutationPending}
             >
-              <Icon name={item.id.includes("python") ? "code" : "data"} />
+              <Icon name={item.language === "python" || item.id.includes("python") ? "code" : "data"} />
               <strong>{item.name}</strong>
               <small>{(session.progress[item.id] ?? []).length} / {item.challenges.length} cleared</small>
             </button>
@@ -186,21 +195,47 @@ export function SqlWorkbench(props: SqlWorkbenchProps) {
             </div>
           </div>
 
-          {(isMySQLTrack || trackId === "northwind_python") && (
+          {isPathTrack && (
             <div className="connection-info">
               <div className="connection-status">
                 <span className="status-dot" aria-hidden="true" />
-                <span>Read-only access</span>
+                <span>{labels.connection}</span>
               </div>
-              <div className="connection-label">{connectionLabel}</div>
+              <div className="connection-label">{track.summary}</div>
             </div>
           )}
 
-          {curriculumId === "northwind_data" && <SchemaNavigator schema={schema} />}
+          {isPathTrack && session.datasets.length > 0 && (
+            <SchemaNavigator datasets={session.datasets} activeDatasetId={challenge.dataset?.id} />
+          )}
+
+          {reviewItems.length > 0 && (
+            <section className="review-queue" aria-label="Practice queue">
+              <div className="review-queue-heading">
+                <h4>PRACTICE</h4>
+                <span>{reviewItems.length} to revisit</span>
+              </div>
+              <div className="review-queue-items">
+                {reviewItems.map((item) => (
+                  <button
+                    key={`${item.track}:${item.challenge_id}`}
+                    type="button"
+                    className="review-item"
+                    onClick={() => onOpenReviewItem(item)}
+                    disabled={codeMutationPending || previewMutationPending}
+                    title={`${item.track_name}: ${item.title}`}
+                  >
+                    <strong>{item.title}</strong>
+                    <small>{item.reason === "hint" ? "Revisit without hints" : "Spaced revisit"} · {item.track_name} · {item.phase_name}</small>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+
           <ChallengeExplorer
             track={track}
-            trackId={trackId}
-            level={track.challenges.findIndex((item) => item.id === challenge.id)}
+            level={challengeIndex}
             completed={completed}
             challengeSearch={challengeSearch}
             onSearchChange={setChallengeSearch}
@@ -215,8 +250,8 @@ export function SqlWorkbench(props: SqlWorkbenchProps) {
           {/* Query tab and toolbar */}
           <div className="query-tab-bar">
             <div className="query-tab active" aria-current="page">
-              <span className="tab-icon"><Icon name={isPythonTrack ? "code" : "data"} /></span>
-              <span className="tab-label">{isPythonTrack ? "analysis.py" : "query.sql"}</span>
+              <span className="tab-icon"><Icon name={coding.language === "python" ? "code" : "data"} /></span>
+              <span className="tab-label">{coding.language === "python" ? "analysis.py" : "query.sql"}</span>
               {draftDirty && <span className="tab-dirty" aria-label="Unsaved changes">●</span>}
             </div>
           </div>
@@ -262,15 +297,15 @@ export function SqlWorkbench(props: SqlWorkbenchProps) {
             </div>
             <div className="toolbar-group toolbar-status">
               <span className="read-only-badge">
-                <Icon name="lock" /> Read-only sandbox
+                <Icon name="lock" /> {labels.badge}
               </span>
             </div>
           </div>
 
           {/* Challenge brief - compact task area */}
-          <ChallengeBrief challenge={challenge} isCleared={isCleared} trackId={trackId} />
+          <ChallengeBrief challenge={challenge} isCleared={isCleared} />
 
-          {/* SQL Editor */}
+          {/* Code editor */}
           <div className="editor-container" id="query-editor">
             <div className="code-workspace">
               <SyntaxEditor
@@ -282,8 +317,8 @@ export function SqlWorkbench(props: SqlWorkbenchProps) {
                 readOnly={readOnly}
               />
               <div className="code-editor-footnote">
-                <span id="quest-editor-help">{sandboxLabel}</span>
-              <span id="quest-editor-shortcuts">Ctrl + Enter to preview; Ctrl + Shift + Enter to check</span>
+                <span id="quest-editor-help">{labels.sandbox}</span>
+                <span id="quest-editor-shortcuts">Ctrl + Enter to preview; Ctrl + Shift + Enter to check</span>
               </div>
             </div>
 
@@ -297,16 +332,17 @@ export function SqlWorkbench(props: SqlWorkbenchProps) {
             </div>
             <p className="copy-status" aria-live="polite">{copyStatus}</p>
             {draftDirty && <button type="button" className="text-button draft-download" onClick={onDownloadDraft}>Download this draft</button>}
-            <p className="preview-hint" aria-live="polite">Run example executes your query against the sample data without checking the answer or awarding XP.</p>
+            <p className="preview-hint" aria-live="polite">Run example executes your code without checking the answer or awarding XP.</p>
           </div>
 
           <LearningOutputPanel
             previewResult={previewResult}
             result={result}
-            trackId={trackId}
+            isPathTrack={isPathTrack}
             isCleared={isCleared}
             hintsRevealed={hintsRevealed}
             hints={hints}
+            plan={plan}
             onRevealHint={onRevealHint}
             solution={solution}
             onLoadSolution={onLoadSolution}
@@ -318,8 +354,8 @@ export function SqlWorkbench(props: SqlWorkbenchProps) {
             challenge={challenge}
           />
           <div className="challenge-footer">
-            <span>{isFinished ? "Track complete" : result?.correct ? "Level complete" : `${track.challenges.findIndex((item) => item.id === challenge.id) + 1} of ${track.challenges.length}`}</span>
-            {result?.correct && !isFinished && <button type="button" className="button button-primary" onClick={onNext}>Next level <Icon name="chevron-right" /></button>}
+            <span>{isFinished ? "Track complete" : result?.correct ? "Challenge complete" : `${challengeIndex + 1} of ${track.challenges.length}`}</span>
+            {result?.correct && !isFinished && <button type="button" className="button button-primary" onClick={onNext}>Next challenge <Icon name="chevron-right" /></button>}
           </div>
         </section>
       </div>
@@ -327,11 +363,11 @@ export function SqlWorkbench(props: SqlWorkbenchProps) {
       {/* Status bar */}
       <footer className="workbench-statusbar" role="status" aria-label="Workspace status">
         <div className="status-item status-connection">
-          <span className={`status-dot ${isMySQLTrack ? "connected" : "legacy"}`} aria-hidden="true" />
-          {connectionLabel}
+          <span className={`status-dot ${isPathTrack ? "connected" : "legacy"}`} aria-hidden="true" />
+          {labels.connection}
         </div>
         <div className="status-item status-challenge">
-          <Icon name="activities" /> {challenge.topic} · Level {track.challenges.findIndex((c) => c.id === challenge.id) + 1} of {track.challenges.length}
+          <Icon name="activities" /> {phase ? `${phase.name} · ` : ""}{challenge.topic} · {challengeIndex + 1} of {track.challenges.length}
         </div>
         <div className="status-item status-draft">
           <Icon name={draftStorageAvailable ? "check" : "close"} />

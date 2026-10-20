@@ -4,6 +4,8 @@
 **Date:** 2026-10-16
 **Scope:** learning module (Python + SQL tracks), sandbox architecture, dataset system, MySQL removal, learning frontend.
 
+The implementation specification for separate learner-owned Python and SQL Scratch workspaces is in [code-quest-workspaces.md](code-quest-workspaces.md). That document is the current contract for scratch mode; this file remains the broader learning-platform redesign plan.
+
 ---
 
 ## 1. Purpose and outcomes
@@ -123,6 +125,8 @@ Challenge = {
     "id": "py-04-03-dict-count",             # stable id (progress key)
     "phase_id": "py-04-collections", "order": 3,
     "title": "...", "brief": "...", "starter": "...", "hints": [...],
+    "plan": ["...", "..."],                  # free pseudo-code steps (never a hint)
+    "predict": {"prompt": "...", "code": "...", "options": [...], "answer": 0, "why": "..."},
     "runner": "python_guided",               # python_guided | python_real | sqlite
     "dataset": {"id": "northwind", "tables": ["customers"], "size": "small"},
     "mode": "readonly",                      # sqlite only: readonly | scratch
@@ -439,9 +443,16 @@ Each slice is independently testable. Backend checks run via `backend\.venv\Scri
 ### Slice 6 — mixed review queue + checkpoints
 - Deliverables: review sets after phases, Practice section, spaced resurfacing across datasets; checkpoint wiring into capstone/portfolio flow.
 - Verify: a review set draws variants from earlier phases; checkpoint gating works.
+- Status: the Practice review queue shipped with slice 8 (hint-first + spaced resurfacing, mixed across tracks). Cross-dataset variants for resurfacing still need authored variant content.
 
 ### Slice 7 — third language pack (later)
 - A new language = one runner module + one dataset/fixture strategy + one phase pack + a capability descriptor. Engine and frontend need no changes beyond labels.
+
+### Slice 8 — learning aids and practice (pilot shipped)
+- **Pseudo-code plans** — `challenge(plan=[...])` stores plain-prose steps with no syntax. A plan renders free in the Hints tab: reading it never counts as a hint and never costs the mastery badge. Pilot content: Python phase 1 + SQL phase 1; all other challenges default to `plan=[]` until the rollout pass.
+- **Error-pattern coaching** — failed submissions get targeted notes from `backend/coaching.py`: SQL `= NULL` / `!= NULL`, `HAVING` without `GROUP BY`, `SELECT *` column drift; Python `== None`, print-only functions where the reference returns a value, unchanged starter code. Detectors stay deliberately conservative and notes are additive to the regular feedback string.
+- **Predict-the-output drills** — `challenge(predict={prompt, code, options, answer, why})` renders an optional warm-up card in the challenge brief (local-only, no XP, no badge impact). Pilot: four drills in phase 1.
+- **Mixed review queue** — `POST /api/learning/review` selects up to 5 completed challenges per learner: hint-assisted completions first, then the oldest ones; each track's newest completion is skipped and the set alternates tracks. A PRACTICE card in the navigator opens the challenge directly — re-solving a cleared challenge awards no XP and no extra badge.
 
 ---
 
@@ -451,7 +462,7 @@ Each slice is independently testable. Backend checks run via `backend\.venv\Scri
 - No server database, Docker, or external services for learning.
 - No server-admin content (roles, backups, HA, stored procedures).
 - No fully generated challenge content; variety comes from authored templates and datasets.
-- No changes to non-learning features (tools, news, PDFs) beyond what removal cleanup requires.
+- No changes to non-learning features (tools and PDFs) beyond what removal cleanup requires.
 
 ---
 
@@ -474,10 +485,9 @@ Each slice is independently testable. Backend checks run via `backend\.venv\Scri
 From the previous review round (all verified, none committed):
 
 - Level cap removed (`le=10` in `backend/main.py`); bounds now enforced by `learning.py`.
-- `backend/news/service.py`: whitespace regex fixed (`r"\s+"`), plus `html.unescape` entity decoding.
 - PDF sign tool completed: three JSON routes (`/api/pdf/pdf-sign/preview`, `/page/{token}`, `/apply`), new `frontend/src/features/tools/PdfSignTool.tsx` (upload → click-to-place → draw/type/upload signature → apply → download), `PdfDownload`/`PdfSignPreview` types + apiClient functions; end-to-end smoke passed.
 - `PDF_PAGES` trimmed to tools with real templates; import-time assert extended; `tool.html` now `{% include content %}`; `tool_content.html` ready-tool copy; legacy pages return 200.
-- Frontend: `NewsResponse` fixed (`items/fetchedAt/stale`) + stale notice; `LearningOutputPanel` real tab states + `[hidden]` fix; ChallengeBrief chip spacing; `CatalogPage` track count derived; dead `LearningWorkbench.tsx` removed.
+- Frontend: ``LearningOutputPanel` real tab states + `[hidden]` fix; ChallengeBrief chip spacing; `CatalogPage` track count derived; dead `LearningWorkbench.tsx` removed.
 - Docs/config: `structure.txt` regenerated; stale note removed from `run.txt`; `backend/.env.example` created.
 - Verification: `py_compile`, `import main` asserts, sign smoke test, legacy template renders, `npm.cmd run build` all pass.
 
@@ -485,16 +495,97 @@ From the previous review round (all verified, none committed):
 
 | File | Role |
 |------|------|
-| `backend/learning.py` | Engine: tracks, guided interpreter, SQL sandbox, runner dispatch, unlock, progress |
-| `backend/northwind.py`, `backend/northwind_curriculum.py` | MySQL integration + its challenges — **to delete** |
-| `backend/mysql/`, `northwind.sql`, `docker-compose.northwind.yml`, `.env.northwind.example` | MySQL deployment — **to delete** |
-| `backend/datasets/` (new) | Dataset registry + four seeded datasets |
-| `backend/curriculum/` (new) | Phase packs, factories, private references, checks |
-| `backend/main.py` | Learning API routes; session/run/dataset endpoints |
-| `frontend/src/features/learning/LearnPage.tsx` | All learn state; unlock duplication to remove |
-| `frontend/src/features/learning/components/ChallengeExplorer.tsx` | Regroups by phase |
-| `frontend/src/features/learning/components/LearningWorkspace.tsx` | Runner-based workbench selection |
-| `frontend/src/features/learning/components/SqlWorkbench.tsx` | Shared workbench; MySQL labels removed |
-| `frontend/src/features/learning/components/SchemaNavigator.tsx` | Fed by dataset metadata |
-| `frontend/src/types/index.ts` | Learning types generalized |
-| `structure.txt`, `run.txt`, `README.md` | Docs to update/regenerate |
+| `backend/learning.py` | Engine: track registry (legacy + paths), session/progress/XP, runner dispatch, unlock rules |
+| `backend/guided_python.py` | Guided Python interpreter shared by legacy and path challenges |
+| `backend/sql_runner.py` | SQLite sandbox: readonly + scratch modes, authorizer, row/step/time caps |
+| `backend/python_runner.py` | Real CPython subprocess runner, fixtures, Python ↔ SQLite bridge |
+| `backend/datasets/` | Dataset registry + four deterministic seeded datasets (northwind, streamhub, bookings, reviews) |
+| `backend/curriculum/` | Phase packs, factories, private references, checks, pluggable runners |
+| `backend/curriculum/phases_python.py` | Python path: 14 phases, 70 challenges |
+| `backend/curriculum/phases_sql.py` | SQL path: 10 phases, 50 challenges |
+| `backend/main.py` | Learning API routes (session/event/solution/answer/code/preview) |
+| `frontend/src/features/learning/LearnPage.tsx` | Learn state, drafts, hints, mutations |
+| `frontend/src/features/learning/components/SqlWorkbench.tsx` | Single workbench (runner-driven labels, no MySQL branches) |
+| `frontend/src/features/learning/components/ChallengeExplorer.tsx` | Phase-grouped explorer for path tracks, tier groups for legacy |
+| `frontend/src/features/learning/components/SchemaNavigator.tsx` | Dataset explorer fed by `session.datasets` |
+| `frontend/src/types/index.ts` | Learning types generalized (track ids are strings) |
+| `structure.txt`, `run.txt`, `README.md` | Docs regenerated/updated |
+
+MySQL integration files (`backend/northwind.py`, `backend/northwind_curriculum.py`, `backend/mysql/`, `northwind.sql`, `docker-compose.northwind.yml`, `.env.northwind.example`) were deleted; Northwind now ships as a dataset.
+
+---
+
+## 17. Appendix C — extending the platform (implemented recipe)
+
+Adding a new learning path is a **data change, not an engine change**. The
+auto-discovery and runner registry make a future ML path (or a third language)
+a drop-in addition:
+
+1. **Author the content pack.** Create `backend/curriculum/phases_<name>.py` and
+   export a `PATH` built with `helpers.challenge()` / `helpers.phase()` /
+   `helpers.path()`. Optional `ORDER = <int>` controls UI ordering. The pack is
+   discovered automatically on startup — `phases_*.py`, nothing else to touch.
+2. **Register a runner (only if the execution profile is new).** Map a runner
+   name to a grading function with `grading.register_runner("python_ml", fn)`,
+   or reuse `sqlite` / `python_guided` / `python_real`. A runner is any function
+   `(challenge, source) -> (output, correct, feedback, sql_columns, sql_rows,
+   error_line, error_column)`.
+3. **Reuse the shared datasets.** The four seeded SQLite datasets and their
+   metadata (schema navigator, `DB_PATH` bridge) are shared by every runner;
+   new datasets are single modules dropped into `backend/datasets/`.
+4. **Nothing else changes.** Sessions, unlock/progression, XP, hints, plans,
+   predict drills, coaching notes, the review queue, drafts, previews, solution
+   walkthroughs, and the phase explorer all work from the exported `PATH` as-is.
+
+Worked example (future ML path):
+
+```python
+# backend/curriculum/phases_ml.py
+from .helpers import challenge, path, phase
+
+ORDER = 30
+
+PHASE_1 = phase(
+    "ml-1-foundations",
+    "Data Foundations",
+    "Warm-up",
+    "Load, inspect, and describe the shared datasets with pandas.",
+    [
+        challenge(
+            "ml-01-01",
+            "Load the frame",
+            "pandas",
+            "Load the products table with pandas through the SQLite bridge and print its shape.",
+            "import pandas as pd\nimport sqlite3\n\n# your code here\n",
+            "import pandas as pd\nimport sqlite3\n\nconnection = sqlite3.connect(DB_PATH)\ndf = pd.read_sql_query(\"SELECT * FROM products\", connection)\nconnection.close()\nprint(df.shape)",
+            hints=["Start by loading the table."],
+            plan=[
+                "Load the products table through the SQLite bridge.",
+                "Print the shape of the frame.",
+            ],
+            predict={
+                "prompt": "What does df.shape print for a table with 77 rows and 10 columns?",
+                "code": "print(df.shape)",
+                "options": ["(77, 10)", "77", "[77, 10]"],
+                "answer": 0,
+                "why": "shape is a (rows, columns) tuple.",
+            },
+            success="You loaded your first frame.",
+            runner="python_ml",  # registered via grading.register_runner
+            dataset={"id": "northwind"},
+        ),
+    ],
+)
+
+PATH = path("ml_path", "ML Path", "From tables to models.", "python", [PHASE_1])
+```
+
+```python
+# In a module inside backend/curriculum/ (or alongside a pack):
+from . import grading
+
+def grade_python_ml(challenge, source):
+    ...
+
+grading.register_runner("python_ml", grade_python_ml)
+```

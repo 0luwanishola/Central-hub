@@ -7,7 +7,6 @@ import type { AppContext } from "../../app/AppShell";
 import type { Tool } from "../../types";
 import { Icon, iconForTool } from "../../ui/Icon";
 import { LEARNING_SESSION_QUERY_KEY, startLearningSession } from "../../services/apiClient";
-import { LatestNews } from "../news/LatestNews";
 
 const RECENT_TOOLS_KEY = "central-hub:recent-tools:v1";
 
@@ -151,7 +150,6 @@ export function CatalogPage({ showAll = false }: { showAll?: boolean }) {
 
       {clearedChallenges > 0 && <Link to="/learn" className="continue-quest-card"><span className="continue-quest-icon"><Icon name="code" /></span><span><strong>Continue Code Quest</strong><small>{clearedChallenges} of {totalChallenges} challenges cleared · {learningSession?.xp ?? 0} XP</small></span><Icon name="arrow" /></Link>}
 
-      <LatestNews limit={5} />
 
       {quickTools.length > 0 && <>
         <div className="section-heading section-heading-tools">

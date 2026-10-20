@@ -12,8 +12,9 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 if __package__:
-    from . import curriculum, guided_python
+    from . import coaching, curriculum, guided_python
 else:
+    import coaching
     import curriculum
     import guided_python
 
@@ -561,6 +562,11 @@ def _valid_learner_id(value: Optional[str]) -> Optional[str]:
         return None
 
 
+def normalize_learner_id(value: Optional[str]) -> Optional[str]:
+    """Public form of the UUID validation shared by learning services."""
+    return _valid_learner_id(value)
+
+
 def _progress(connection: sqlite3.Connection, learner_id: str) -> dict:
     learner = connection.execute("SELECT xp FROM learners WHERE id = ?", (learner_id,)).fetchone()
     if learner is None:
@@ -1048,7 +1054,16 @@ def submit_code(learner_id: str, track_id: str, level: int, source: str) -> dict
     if error_column is not None:
         response["error_column"] = error_column
     if not correct:
-        response["hints_available"] = len(challenge["coding"]["hints"])
+        coding = challenge["coding"]
+        notes = coaching.coach_notes(
+            coding.get("language", ""),
+            source,
+            starter=coding.get("starter_code"),
+            reference=challenge.get("reference"),
+        )
+        if notes:
+            response["coaching"] = notes
+        response["hints_available"] = len(coding["hints"])
     return response
 
 
@@ -1073,6 +1088,104 @@ def get_solution(learner_id: str, track_id: str, challenge_id: str) -> dict:
         "language": coding["language"],
         "capstone_rubric": challenge.get("capstone_rubric", []),
     }
+
+
+def review_set(learner_id: str, limit: int = 5) -> dict:
+    """Small mixed practice set drawn from challenges this learner already cleared.
+
+    Hint-assisted completions come first (worth re-solving unaided), then the
+    oldest completions for spaced resurfacing. The most recent completion in
+    each track is skipped while enough older material exists, and the set
+    alternates between tracks so practice stays mixed.
+    """
+    normalized_id = _valid_learner_id(learner_id)
+    if normalized_id is None:
+        raise LearningError(404, "Learning profile not found. Refresh the page to start a new profile.")
+
+    with closing(_connect()) as connection:
+        exists = connection.execute("SELECT 1 FROM learners WHERE id = ?", (normalized_id,)).fetchone()
+        if exists is None:
+            raise LearningError(404, "Learning profile not found. Refresh the page to start a new profile.")
+        completed_rows = connection.execute(
+            "SELECT track, challenge_id, completed_at FROM learning_challenge_progress WHERE learner_id = ? ORDER BY completed_at ASC",
+            (normalized_id,),
+        ).fetchall()
+        hinted = {
+            (row["track"], row["challenge_id"])
+            for row in connection.execute(
+                "SELECT track, challenge_id FROM learning_hint_usage WHERE learner_id = ?",
+                (normalized_id,),
+            ).fetchall()
+        }
+
+    candidates: list[dict] = []
+    for row in completed_rows:
+        track_id = row["track"]
+        if track_id not in PATH_TRACK_IDS:
+            continue  # practice sets cover the phase paths; legacy levels keep their own flow
+        track = ALL_TRACKS[track_id]
+        challenge_id = row["challenge_id"]
+        index = next((i for i, item in enumerate(track["challenges"]) if item.get("id") == challenge_id), None)
+        if index is None:
+            continue
+        candidates.append(
+            {
+                "track": track_id,
+                "challenge_id": challenge_id,
+                "level": index,
+                "reason": "hint" if (track_id, challenge_id) in hinted else "revisit",
+            }
+        )
+
+    total = len(candidates)
+    if total < 3:
+        return {"items": [], "completed": total}
+
+    newest = {item["track"]: item["challenge_id"] for item in candidates}  # rows arrive oldest-first
+    pool = [item for item in candidates if item["challenge_id"] != newest[item["track"]]]
+    if len(pool) < 3:
+        pool = candidates
+
+    hinted_pool = [item for item in pool if item["reason"] == "hint"]
+    revisit_pool = [item for item in pool if item["reason"] != "hint"]
+
+    selected: list[dict] = []
+    seen_tracks: list[str] = []
+
+    def take(items: list[dict], quota: int) -> None:
+        remaining = [item for item in items if item not in selected]
+        while remaining and quota > 0 and len(selected) < limit:
+            remaining.sort(key=lambda entry: seen_tracks.count(entry["track"]))
+            pick = remaining.pop(0)
+            selected.append(pick)
+            seen_tracks.append(pick["track"])
+            quota -= 1
+
+    take(hinted_pool, 3)
+    take(revisit_pool, limit - len(selected))
+
+    items: list[dict] = []
+    for item in selected:
+        track = ALL_TRACKS[item["track"]]
+        challenge = track["challenges"][item["level"]]
+        phase_name = next(
+            (phase["name"] for phase in track.get("phases", []) if phase["id"] == challenge.get("phase_id")),
+            "Review",
+        )
+        items.append(
+            {
+                "track": item["track"],
+                "track_name": track["name"],
+                "challenge_id": item["challenge_id"],
+                "level": item["level"],
+                "title": challenge["title"],
+                "topic": challenge["topic"],
+                "phase_name": phase_name,
+                "language": challenge["coding"]["language"],
+                "reason": item["reason"],
+            }
+        )
+    return {"items": items, "completed": total}
 
 
 def preview_code(learner_id: str, track_id: str, level: int, source: str) -> dict:

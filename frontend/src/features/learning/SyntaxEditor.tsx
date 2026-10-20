@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent, type ReactNode, type UIEvent } from "react";
+import { useEffect, useRef, type KeyboardEvent, type ReactNode, type UIEvent } from "react";
 
 type CodeLanguage = "python" | "sql";
 
@@ -88,6 +88,13 @@ function paintSource(source: string, language: CodeLanguage): ReactNode[] {
 export function SyntaxEditor({ id, language, value, readOnly, onChange, onKeyDown }: SyntaxEditorProps) {
   const highlightLayer = useRef<HTMLPreElement>(null);
   const lineNumberLayer = useRef<HTMLPreElement>(null);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+
+  // The editor is a fixed-size scroll box; clear any stale inline height left behind
+  // by the old drag-resize behavior so the box can never grow past its defined size.
+  useEffect(() => {
+    editorRef.current?.style.removeProperty("height");
+  }, [value]);
 
   function syncScroll(event: UIEvent<HTMLTextAreaElement>) {
     if (!highlightLayer.current) return;
@@ -102,6 +109,7 @@ export function SyntaxEditor({ id, language, value, readOnly, onChange, onKeyDow
         <pre ref={lineNumberLayer} className="syntax-line-numbers" aria-hidden="true">{Array.from({ length: Math.max(1, value.split("\n").length) }, (_, index) => index + 1).join("\n")}</pre>
         <pre ref={highlightLayer} className="syntax-highlight-layer" aria-hidden="true">{value ? paintSource(value, language) : " "}</pre>
         <textarea
+          ref={editorRef}
           id={id}
           aria-describedby="quest-editor-help quest-editor-shortcuts"
           className={`quest-code-editor quest-code-editor-${language}`}

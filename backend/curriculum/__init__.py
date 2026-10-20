@@ -60,9 +60,12 @@ def public_challenge(challenge: dict) -> dict:
         "runner": challenge["runner"],
         "coding": {key: value for key, value in challenge["coding"].items() if not key.startswith("_")},
     }
+    if challenge.get("mode"):
+        public["mode"] = challenge["mode"]
     for key in (
         "concept",
         "concept_example",
+        "predict",
         "capstone",
         "capstone_rubric",
         "business_question",

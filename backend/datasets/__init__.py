@@ -16,9 +16,10 @@ from pathlib import Path
 from typing import Optional
 
 if __package__:
-    from . import bookings, northwind, reviews, streamhub
+    from . import bookings, case_streamhub, northwind, reviews, streamhub
 else:
     import bookings
+    import case_streamhub
     import northwind
     import reviews
     import streamhub
@@ -57,6 +58,12 @@ DATASETS = {
         summary="Product reviews with JSON attributes for JSON and text analysis.",
         module=reviews,
     ),
+    "case_streamhub": Dataset(
+        id="case_streamhub",
+        name="StreamHub Case File",
+        summary="StreamHub's product data plus the case layer for the refund investigation: staff, refunds, badge events, statements, emails, and tips.",
+        module=case_streamhub,
+    ),
 }
 
 DEFAULT_SIZE = "small"
@@ -89,8 +96,12 @@ def connect(dataset_id: str, size: str = DEFAULT_SIZE) -> sqlite3.Connection:
     return connection
 
 
-def write_dataset_file(dataset_id: str, size: str, path: Path) -> None:
-    """Seed the dataset into a real file (used by the Python <-> SQLite bridge)."""
+def write_dataset_file(dataset_id: str, size: str, path: Path, *, read_only: bool = True) -> None:
+    """Seed the dataset into a real file.
+
+    Challenge bridge files are read-only. SQL Scratch workspace copies opt out so
+    the learner can create tables and modify the isolated copy.
+    """
     module = get(dataset_id).module
     connection = sqlite3.connect(path)
     try:
@@ -100,7 +111,7 @@ def write_dataset_file(dataset_id: str, size: str, path: Path) -> None:
     finally:
         connection.close()
     try:
-        path.chmod(0o444)
+        path.chmod(0o444 if read_only else 0o600)
     except OSError:
         pass
 

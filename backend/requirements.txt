@@ -1,17 +1,11 @@
 # Direct dependencies. Transitive deps are resolved by pip.
-# Note: Starlette >= 1.0 removed the old Jinja2Templates.TemplateResponse(name, context)
-# signature that main.py previously used. Do not pin FastAPI/Starlette below that
-# without reverting the TemplateResponse calls.
 fastapi==0.142.2
 uvicorn[standard]==0.54.0
-jinja2==3.1.6
 
 # Third-party provider integrations
 httpx==0.28.1
 python-dotenv==1.2.1
 
-# RSS/Atom feed parsing for news feature
-feedparser==6.0.11
 
 # PDF tools (backend/pdftools/)
 #   pypdf       - read and write PDFs: merge/split/rotate/encrypt/metadata

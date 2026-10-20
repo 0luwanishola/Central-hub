@@ -1,14 +1,10 @@
   # Central Hub
 
-  Document type: Simplified Technical Documentation
-  Status: Active
-  Version: 1.0
-
-  This document provides the project overview, system context, and technical description for Central Hub technical documentation structure.
+  This README describes the current Central Hub application, its architecture, features, and local setup.
 
   ## 1. Purpose
 
-  Central Hub is a full-stack web application designed to combine everyday productivity utilities, learning activities, and external data services into a single user-facing workspace. The product is intended to act as a practical digital hub where users can:
+  Central Hub is a full-stack web application designed to combine personal productivity tools and utilities, with optional learning activities and connected data services into a single user-facing workspace. The product is intended to act as a practical digital hub where users can:
 
   - access browser-based utilities such as JSON formatting, Base64 encoding, hashing, QR generation, and date conversion,
   - run lightweight local games and study activities,
@@ -16,11 +12,11 @@
   - browse football fixtures and match details from public upstream sports providers,
   - process PDF files through server-side tools such as merge, split, organise, and metadata updates.
 
-  The application is intentionally designed with a dual interface model: a modern React frontend for the standalone experience and a FastAPI backend that provides APIs, data processing, and compatibility routes for the existing web interface.
+  The application uses a React frontend and a FastAPI JSON API. The backend owns integrations, learning progress, and server-side document processing; the frontend owns navigation and user-facing pages.
 
   ## 2. Scope
 
-  This project provides a self-contained utility and learning portal for single-user or small-team local use. It is not a large-scale enterprise platform and does not implement authentication, user accounts, or multi-user roles.
+  This project provides a personal all-in-one digital hub for a single user, primarily intended for local use. It is not a large-scale enterprise platform and does not implement authentication, user accounts, or multi-user roles.
 
   The scope includes:
 
@@ -28,7 +24,6 @@
   - category-based tool catalog browsing,
   - offline-capable client-side utilities,
   - a learning module for Python and SQL challenge exercises,
-  - sports fixture browsing through provider-normalised APIs,
   - server-side PDF processing workflows,
   - browser persistence for lightweight local state.
 
@@ -46,7 +41,6 @@
 
   1. Backend: Python + FastAPI
      - serves the API,
-     - provides compatibility pages,
      - normalises data from third-party providers,
      - handles file uploads and PDF generation,
      - stores learning progress in SQLite.
@@ -82,7 +76,7 @@
   - Tool categories
   - Settings
 
-  Each section is implemented as a feature module and is loaded through the application router rather than embedding different pages directly into the backend templates.
+  Each section is implemented as a feature module and is loaded through the application router with React Router.
 
   ### 4.2 Backend architecture
 
@@ -91,10 +85,9 @@
   - the API application entry point in `main.py`,
   - provider adapters under `backend/providers/`,
   - PDF processing logic under `backend/pdftools/`,
-  - templated legacy pages under `backend/templates/`,
   - the SQLite learning store for Code Quest progress.
 
-  The backend acts as the integration layer for:
+  The backend acts as the API and integration layer for:
 
   - sports data providers,
   - PDF generation and processing,
@@ -125,8 +118,7 @@
   - time utilities,
   - text tools,
   - design utilities,
-  - sports tools,
-  - PDF tools.
+  - sports data tools,\r?\n  - PDF tools.
 
   Client-side utilities are executed directly in the browser without sending raw input to the backend. Examples include:
 
@@ -151,26 +143,36 @@
 
   ### 5.3 Code Quest
 
-  Code Quest is the educational component of the application. It offers two phase-based learning paths plus the original Foundations tracks:
+  Code Quest is the educational component of the application. It currently contains two phase-based learning paths and retained Foundations challenge content:
 
-  - **Python Path** — 14 phases from the first `print()` to files, classes, tests, and a read-only SQLite bridge. Early phases run in a guided interpreter for instant, safe feedback; later phases run real CPython in an isolated subprocess.
+  - **Python Path** — 14 phases from the first `print()` through files, classes, tests, and a read-only SQLite bridge. Early phases run in a guided interpreter for instant, safe feedback; later phases run real CPython in an isolated subprocess.
   - **SQL Path** — 10 phases from `SELECT` through joins, subqueries, window functions, schema design, cleaning, and performance work. Read-only phases query sandboxed SQLite databases; advanced phases add a disposable scratch database for schema and `UPDATE` lessons.
-  - **Legacy Foundations tracks** — the original Python and SQL puzzle tracks remain playable with their existing progress.
+  - **Foundations challenge content** — earlier Python and SQL material remains available with its original progression and grading behavior.
 
-  All sandboxes run on SQLite through the Python standard library: no database server, container, or driver is required. Four datasets are shipped in `backend/datasets/` and shared by both paths:
+  All sandboxes use SQLite through Python standard library; no separate database server or driver is required. The shared registry in `backend/datasets/` includes Northwind, StreamHub, Bookings, Reviews, and the StreamHub Case File dataset:
 
   - **Northwind** — the classic business schema (customers, orders, products, shipping).
   - **StreamHub** — a streaming product: users, subscriptions, invoices, events, and support tickets.
   - **Bookings** — a deliberately messy hotel bookings extract for cleaning lessons.
-  - **Reviews** — product reviews with a JSON attributes column.
+  - **Reviews** - product reviews with a JSON attributes column.
+  - **StreamHub Case File** - investigation records layered over StreamHub for the Case Files path.
 
   Datasets are seeded deterministically (identical data on every run), so grading is stable and datasets can be rotated freely. A `perf` tier (for example, 200,000 events) backs the performance lessons.
 
-  Grading never compares against copied expected text: each submission runs live alongside a private reference solution on the same data, and behavior-preserving checks (reduced-data re-runs, constraint probes, feature checks) keep hardcoding from passing. Submissions run with row, step, and time caps; ATTACH, PRAGMA, and file-access functions are blocked. The service does not execute submitted Python with `eval` or `exec`, and learner source is never retained.
+  Grading never compares against copied expected text: each submission runs live alongside a private reference solution on the same data, and behavior-preserving checks (reduced-data re-runs, constraint probes, feature checks) keep hardcoding from passing. Submissions run with row, step, and time caps; ATTACH, PRAGMA, and file-access functions are blocked. Python Path challenges run as isolated subprocesses with timeouts; SQL work is executed against restricted SQLite connections. This local-use design is not an OS-level security boundary for untrusted public users. Learner source is not retained.
 
-  Learner progress, XP, hints, and badges are stored in SQLite on the backend. Preview runs never award XP, hints unlock with the same rule as challenges, and solution walkthroughs open only after a challenge is completed.
+  The subprocess uses `exec` to run learner code inside its harness. Isolation mode, a timeout, blocked imports/operations, and temporary per-run files provide local-use guardrails, not OS-level containment.
 
-  Adding a new path is a data change, not an engine change: drop a `phases_<name>.py` module into `backend/curriculum/` that exports a `PATH` built with the shared factories, and register a runner in `grading.RUNNERS` if the path needs a new execution profile (for example, a future machine-learning path with pandas/numpy). See [doc.md](doc.md) for the full plan and the extension recipe.
+  Learner progress, XP, hints, and badges are stored in SQLite on the backend. Preview runs never award XP, hints unlock with the same rule as challenges, and solution walkthroughs open only after a challenge is completed. Learning aids stay honest: a pseudo-code plan is free to read (never a hint, never affects the mastery badge), predict-the-output warm-ups carry no XP, failed submissions get targeted coaching notes for classic mistakes, and a PRACTICE queue mixes hinted or stale completions across tracks.
+
+  New phase-based learning paths are content packs: add a `phases_<name>.py` module under `backend/curriculum/` and build its challenges with shared factories. Add a runner in `grading.RUNNERS` only when a new execution profile is needed. See [doc.md](doc.md) for implementation details.
+
+  **Scratch workspaces.** Code Quest also has learner-owned Scratch workspaces for running your own ideas outside challenge grading:
+
+  - **Python Scratch** (`/learn/scratch/python`) runs the complete editor buffer in a fresh isolated CPython subprocess on every run. Limits are server-owned: 5,000 source characters, 5-second timeout, 20,000 stdout/stderr characters, and up to 10 UTF-8 text files (64 KiB per file, 256 KiB total). Runs return structured diagnostics and never grade, award XP, open hints, or touch challenge progress.
+  - **SQL Scratch** (`/learn/scratch/sql`) uses a persistent, disposable SQLite workspace. Create a blank database or a copy of a registered dataset (`small` tier only), run multi-statement scripts atomically, then reset or delete the workspace. Each browser tracks one active workspace token; the server caps a learner at three active workspaces and expires idle workspaces after 60 minutes.
+
+  Scratch editor drafts live in browser storage under versioned keys and stay separate from challenge drafts. SQL workspace files live under a server-owned temporary root (override with `CQ_SCRATCH_SQL_ROOT`) and are removed on startup and idle expiry. Scratch endpoints never call challenge grading and store no source, SQL, results, or generated files in the learning database. This is a local/trusted-use feature, not a public untrusted-code service. See [code-quest-workspaces.md](code-quest-workspaces.md) for the full contract.
 
   ### 5.4 LiveScore
 
@@ -208,18 +210,15 @@
 
   - tool catalog retrieval,
   - learning session creation and code challenge submission,
-  - sports fixture queries,
   - match detail queries,
   - PDF processing requests,
   - secured download routes for generated files.
 
-  Code Quest uses `POST /api/learning/session` to load progress and `POST /api/learning/code` to run and check a coding challenge.
-
-  Each language track has 11 guided coding challenges: five beginner, three intermediate, and three advanced. Intermediate work practices filtering, state tracking, joins, and common table expressions. Advanced work introduces search algorithms, recursion, window functions, and recursive CTEs. Clearer challenges award more XP, and hints plus saved browser drafts support practice at the learner's pace.
-
-  The editor colors Python and SQL commands, names, functions, strings, numbers, and comments while keeping native keyboard editing. Python runs in a restricted interpreter; SQL runs read-only against small in-memory datasets. Learner progress remains in SQLite, and startup migrates older five-level progress tables without clearing saved completions.
+  Code Quest uses `POST /api/learning/session` to load progress and `POST /api/learning/code` to run and check a coding challenge. The API also supports preview, hints/events, answer submission for retained Foundations content, review sets, and solution walkthroughs.
 
   The FastAPI app also exposes generated OpenAPI documentation at `/docs` and `/redoc`.
+
+  During development the frontend is served by Vite and calls the FastAPI JSON API. The backend does not render application pages.
 
   ### 6.2 Provider integrations
 
@@ -296,6 +295,17 @@
 
   - http://127.0.0.1:8000
 
+  ### 9.3 Run the backend tests
+
+  The Scratch contract tests use the standard library `unittest` runner and the project virtualenv (no `pytest` dependency):
+
+  ```powershell
+  cd backend
+  .\.venv\Scripts\python.exe -m unittest discover -s tests -v
+  ```
+
+  The suite starts the real FastAPI lifespan against temporary learning and SQL workspace roots, so it never touches `backend/data/learning.sqlite3` or the default scratch root.
+
   ## 10. Security and privacy considerations
 
   This project is intended for local and small-scale deployment and does not implement enterprise security controls. Current design considerations include:
@@ -323,10 +333,12 @@
   │   ├── requirements.txt
   │   ├── .env.example
   │   ├── learning.py
+  │   ├── curriculum/
+  │   ├── datasets/
   │   ├── providers/
   │   ├── pdftools/
-  │   ├── templates/
-  │   └── static/
+  │   ├── scratch/
+  │   └── tests/
   ├── frontend/
   │   ├── package.json
   │   ├── vite.config.ts
@@ -338,20 +350,21 @@
 
   ## 12. Current status and limitations
 
-  The project is operational as a combined utility hub and learning platform, but it is still evolving. Notable current limitations include:
+  The project is an operational local-first digital hub and is still evolving. Notable current limitations include:
 
   - some advanced PDF workflows remain planned or partially implemented,
   - the application is not designed as a multi-user production system,
-  - some third-party data integrations rely on public provider behavior and may change without notice,
-  - the legacy backend templates remain available alongside the newer React frontend during migration.
+  - Python Scratch uses a best-effort local subprocess sandbox (static source screen, timeout, output caps, temporary per-run directory), which is not an OS-level security boundary for untrusted public users,
+  - SQL Scratch workspaces are disposable, capped, and expire after idle time; they are not durable storage or backups,
+  - some third-party sports data integrations rely on public provider behavior and may change without notice,
+  - the application has no accounts or cross-device sync; lightweight user state is kept in the browser or local SQLite database.
 
   ## 13. Summary
 
-  Central Hub is best understood as a lightweight, local-first productivity and learning portal that blends:
+  Central Hub is a lightweight, local-first digital hub for everyday tasks. It brings together:
 
   - browser-native utility tools,
   - educational challenge exercises,
-  - sports data browsing,
   - server-side document utilities,
   - a single accessible digital workspace.
 

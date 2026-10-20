@@ -24,6 +24,7 @@ export type LearningCodingExercise = {
   task: string;
   starter_code: string;
   hints: string[];
+  plan?: string[];
   success: string;
 };
 
@@ -46,6 +47,7 @@ export type LearningChallenge = {
   business_question?: string;
   concept?: string;
   concept_example?: string;
+  predict?: LearningPredictDrill;
   metric_contract?: string;
   documentation_url?: string;
   data_sources?: LearningDataSource[];
@@ -109,6 +111,31 @@ export type LearningSession = {
   datasets: LearningDatasetMetadata[];
 };
 
+export type LearningReviewItem = {
+  track: LearningTrackId;
+  track_name: string;
+  challenge_id: string;
+  level: number;
+  title: string;
+  topic: string;
+  phase_name: string;
+  language: "python" | "sql";
+  reason: "hint" | "revisit";
+};
+
+export type LearningReviewSet = {
+  items: LearningReviewItem[];
+  completed: number;
+};
+
+export type LearningPredictDrill = {
+  prompt: string;
+  code: string;
+  options: string[];
+  answer: number;
+  why: string;
+};
+
 export type LearningAnswer = {
   correct: boolean;
   awarded_xp: number;
@@ -131,6 +158,94 @@ export type LearningCodeResult = {
   error_column?: number;
   preview?: boolean;
   mastery_badge_awarded?: boolean;
+  coaching?: string[];
+};
+
+export type ScratchPythonLimits = {
+  timeout_seconds: number;
+  max_source_characters: number;
+  max_stdout_characters: number;
+  max_stderr_characters: number;
+  max_files: number;
+  max_file_bytes: number;
+  max_total_file_bytes: number;
+};
+
+export type ScratchPythonFile = {
+  name: string;
+  content: string;
+  truncated: boolean;
+  size_bytes?: number;
+};
+
+export type ScratchSkippedFile = {
+  name: string;
+  reason: string;
+};
+
+export type ScratchPythonResult = {
+  run_id: string;
+  status: "completed" | "timeout" | "error";
+  stdout: string;
+  stderr: string;
+  error: string | null;
+  error_line: number | null;
+  error_kind: "syntax" | "runtime" | "sandbox" | "request" | "timeout" | null;
+  duration_ms: number;
+  timed_out: boolean;
+  truncated: boolean;
+  files: ScratchPythonFile[];
+  skipped_files: ScratchSkippedFile[];
+  limits: ScratchPythonLimits;
+};
+
+export type ScratchSqlLimits = {
+  max_source_characters: number;
+  max_statements: number;
+  max_rows_per_statement: number;
+  max_cell_characters: number;
+  max_response_bytes: number;
+  time_cap_ms: number;
+  step_cap: number;
+  workspace_max_bytes: number;
+  workspaces_per_learner: number;
+  idle_ttl_seconds: number;
+};
+
+export type ScratchSqlWorkspace = {
+  workspace_id: string;
+  base: string;
+  base_name: string;
+  expires_in_seconds: number;
+  idle_ttl_seconds: number;
+  limits: ScratchSqlLimits;
+};
+
+export type ScratchSqlStatement = {
+  index: number;
+  kind: string;
+  columns: string[];
+  rows: (string | number | null)[][];
+  affected_rows: number;
+  truncated: boolean;
+};
+
+export type ScratchSqlRunResult = {
+  workspace_id: string;
+  status: "completed" | "timeout" | "error";
+  duration_ms: number;
+  statements: ScratchSqlStatement[];
+  summary: {
+    statements: number;
+    rows: number;
+    affected_rows: number;
+    truncated: boolean;
+  };
+  error: string | null;
+  error_statement: number | null;
+  error_kind: string | null;
+  truncated: boolean;
+  workspace: ScratchSqlWorkspace;
 };
 
 export type LearningSolution = {
@@ -183,20 +298,6 @@ export type Lineup = {
   formation?: string | null;
   starters?: { name: string; number?: number | string | null }[];
   bench?: { name: string; number?: number | string | null }[];
-};
-
-export type NewsItem = {
-  id: string;
-  title: string;
-  url: string;
-  source: string;
-  publishedAt: string;
-};
-
-export type NewsResponse = {
-  items: NewsItem[];
-  fetchedAt: string;
-  stale: boolean;
 };
 
 export type PdfDownload = {

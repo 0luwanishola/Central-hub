@@ -1,13 +1,14 @@
 import { useState, type KeyboardEvent } from "react";
-import type { LearningCodeResult, LearningTrackId } from "../../../types";
+import type { LearningCodeResult } from "../../../types";
 
 interface LearningOutputPanelProps {
   previewResult: LearningCodeResult | null;
   result: LearningCodeResult | null;
-  trackId: LearningTrackId;
+  isPathTrack: boolean;
   isCleared: boolean;
   hintsRevealed: number;
   hints: string[];
+  plan: string[];
   onRevealHint: () => void;
   solution: { explanation: string; code: string; language: "python" | "sql" } | null;
   onLoadSolution: () => void;
@@ -56,14 +57,19 @@ function renderOutputContent(result: LearningCodeResult) {
 }
 
 export function LearningOutputPanel(props: LearningOutputPanelProps) {
-  const { previewResult, result, trackId, isCleared, hintsRevealed, hints, onRevealHint, solution, onLoadSolution, portfolioNote, setPortfolioNote, portfolioValidation, setPortfolioValidation, onDownloadCapstoneReport, challenge } = props;
+  const { previewResult, result, isPathTrack, isCleared, hintsRevealed, hints, plan, onRevealHint, solution, onLoadSolution, portfolioNote, setPortfolioNote, portfolioValidation, setPortfolioValidation, onDownloadCapstoneReport, challenge } = props;
 
-  const isNorthwindTrack = trackId.startsWith("northwind_");
-  const showSolutionReview = isCleared && isNorthwindTrack;
+  const showSolutionReview = isCleared && isPathTrack;
+  const hasHelp = hints.length > 0 || plan.length > 0;
+  const helpTabLabel = plan.length > 0
+    ? hints.length > 0
+      ? `Plan & hints (${hintsRevealed}/${hints.length})`
+      : "Plan"
+    : `Hints (${hintsRevealed}/${hints.length})`;
   const [activePanel, setActivePanel] = useState<"results" | "feedback" | "hints">("results");
 
   function moveTab(event: KeyboardEvent<HTMLButtonElement>) {
-    const tabs: Array<"results" | "feedback" | "hints"> = hints.length > 0
+    const tabs: Array<"results" | "feedback" | "hints"> = hasHelp
       ? ["results", "feedback", "hints"]
       : ["results", "feedback"];
     const current = tabs.indexOf(activePanel);
@@ -88,7 +94,7 @@ export function LearningOutputPanel(props: LearningOutputPanelProps) {
           onKeyDown={moveTab}
           className={activePanel === "results" ? "panel-tab active" : "panel-tab"}
         >
-          {trackId === "sql" || trackId === "northwind_mysql" ? "Results" : "Output"}
+          {challenge.coding.language === "sql" ? "Results" : "Output"}
         </button>
         <button
           role="tab"
@@ -102,7 +108,7 @@ export function LearningOutputPanel(props: LearningOutputPanelProps) {
         >
           Feedback
         </button>
-        {hints.length > 0 && (
+        {hasHelp && (
           <button
             role="tab"
             aria-selected={activePanel === "hints"}
@@ -113,7 +119,7 @@ export function LearningOutputPanel(props: LearningOutputPanelProps) {
             onKeyDown={moveTab}
             className={activePanel === "hints" ? "panel-tab active" : "panel-tab"}
           >
-            Hints ({hintsRevealed}/{hints.length})
+            {helpTabLabel}
           </button>
         )}
       </div>
@@ -140,6 +146,11 @@ export function LearningOutputPanel(props: LearningOutputPanelProps) {
               <p className="error-location">Error on line {result.error_line}{result.error_column ? `, column ${result.error_column}` : ""}</p>
             )}
             <p>{result.feedback}</p>
+            {result.coaching && result.coaching.length > 0 && (
+              <ul className="coach-notes">
+                {result.coaching.map((note) => <li key={note}>{note}</li>)}
+              </ul>
+            )}
             {renderOutputContent(result)}
           </div>
         )}
@@ -157,6 +168,11 @@ export function LearningOutputPanel(props: LearningOutputPanelProps) {
             <div className={`feedback-item ${result.correct ? "feedback-correct" : "feedback-incorrect"}`}>
               <h4>{result.correct ? "✓ Solution accepted" : "✗ Solution needs work"}</h4>
               <p>{result.feedback}</p>
+              {result.coaching && result.coaching.length > 0 && (
+                <ul className="coach-notes">
+                  {result.coaching.map((note) => <li key={note}>{note}</li>)}
+                </ul>
+              )}
               {result.awarded_xp && <p className="xp-awarded">+{result.awarded_xp} XP awarded</p>}
             </div>
           )}
@@ -166,9 +182,18 @@ export function LearningOutputPanel(props: LearningOutputPanelProps) {
         </div>
       </div>
 
-      {hints.length > 0 && (
+      {hasHelp && (
         <div role="tabpanel" id="output-hints" aria-labelledby="tab-hints" className="output-panel" hidden={activePanel !== "hints"}>
           <div className="hints-panel">
+            {plan.length > 0 && (
+              <details className="plan-card">
+                <summary>Plan (pseudo-code) — free to read</summary>
+                <p className="plan-note">The plan never counts as a hint and never costs the mastery badge.</p>
+                <ol className="plan-list">
+                  {plan.map((step, index) => <li key={index}>{step}</li>)}
+                </ol>
+              </details>
+            )}
             <ol id="quest-hint-list" aria-live="polite">
               {hints.slice(0, hintsRevealed).map((hint, index) => (
                 <li key={index}>

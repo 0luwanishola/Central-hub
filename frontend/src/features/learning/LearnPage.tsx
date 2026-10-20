@@ -1,8 +1,9 @@
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { LEARNING_SESSION_QUERY_KEY, startLearningSession, submitLearningCode, previewLearningCode, recordLearningEvent, getLearningSolution } from "../../services/apiClient";
-import type { LearningCurriculumId, LearningSession, LearningTrackId, LearningCodeResult, LearningSolution } from "../../types";
-import { LearningWorkspace } from "./components/LearningWorkspace";
+import { LEARNING_SESSION_QUERY_KEY, LEARNING_REVIEW_QUERY_KEY, startLearningSession, submitLearningCode, previewLearningCode, recordLearningEvent, getLearningSolution, getLearningReview } from "../../services/apiClient";
+import type { LearningSession, LearningTrackId, LearningCodeResult, LearningSolution, LearningReviewItem } from "../../types";
+import { SqlWorkbench } from "./components/SqlWorkbench";
+import { CodeQuestNav } from "../scratch/CodeQuestNav";
 
 function draftKey(learnerId: string, trackId: LearningTrackId, level: number) {
   return `central-hub:code-draft:v1:${learnerId}:${trackId}:${level}`;
@@ -29,8 +30,13 @@ export function LearnPage() {
     queryFn: startLearningSession,
     staleTime: 30_000,
   });
+  const { data: review } = useQuery({
+    queryKey: [LEARNING_REVIEW_QUERY_KEY, session?.learner_id],
+    queryFn: () => getLearningReview(session!.learner_id),
+    enabled: Boolean(session),
+    staleTime: 60_000,
+  });
   const [trackId, setTrackId] = useState<LearningTrackId>("python");
-  const [curriculumId, setCurriculumId] = useState<LearningCurriculumId>("legacy");
   const [level, setLevel] = useState(0);
   const [code, setCode] = useState("");
   const [resetSnapshot, setResetSnapshot] = useState<string | null>(null);
@@ -50,6 +56,7 @@ export function LearnPage() {
       queryClient.setQueryData<LearningSession>(LEARNING_SESSION_QUERY_KEY, (current) => current
         ? { ...current, xp: answer.xp, progress: answer.progress }
         : current);
+      if (answer.correct) void queryClient.invalidateQueries({ queryKey: [LEARNING_REVIEW_QUERY_KEY] });
     },
   });
 
@@ -59,12 +66,11 @@ export function LearnPage() {
       setPreviewResult(answer);
     },
     onError: (error: Error) => {
-      setPreviewResult({ correct: false, awarded_xp: 0, xp: 0, progress: { python: [], sql: [] }, output: "", feedback: error.message, preview: true } as LearningCodeResult);
+      setPreviewResult({ correct: false, awarded_xp: 0, xp: 0, progress: {}, output: "", feedback: error.message, preview: true } as LearningCodeResult);
     },
   });
 
   const track = session?.tracks.find((item) => item.id === trackId);
-  const curriculumTracks = session?.tracks.filter((item) => item.curriculum_id === curriculumId) ?? [];
   const challenge = track?.challenges[level];
   const completed = session?.progress[trackId] ?? [];
   const result = codeMutation.data ?? null;
@@ -122,20 +128,17 @@ export function LearnPage() {
     setLevel(nextAvailableLevel(session.progress[nextTrack] ?? [], session.tracks.find((item) => item.id === nextTrack)?.challenges.length ?? 1));
   }
 
-  function selectCurriculum(nextCurriculum: LearningCurriculumId) {
-    if (!session || codeMutation.isPending || previewMutation.isPending) return;
-    if (draftDirty && !window.confirm("This draft could not be saved in this browser. Switch curricula and discard it? You can download it first.")) return;
-    const nextTrack = session.tracks.find((item) => item.curriculum_id === nextCurriculum);
-    if (!nextTrack) return;
-    setCurriculumId(nextCurriculum);
-    setTrackId(nextTrack.id);
-    setLevel(nextAvailableLevel(session.progress[nextTrack.id] ?? [], nextTrack.challenges.length));
-  }
-
   function selectLevel(nextLevel: number) {
     if (codeMutation.isPending || previewMutation.isPending || nextLevel > completed.length) return;
     if (draftDirty && !window.confirm("This draft could not be saved in this browser. Open another level and discard it? You can download it first.")) return;
     setLevel(nextLevel);
+  }
+
+  function openReviewItem(item: LearningReviewItem) {
+    if (!session || codeMutation.isPending || previewMutation.isPending) return;
+    if (draftDirty && !window.confirm("This draft could not be saved in this browser. Open the review challenge and discard it?")) return;
+    setTrackId(item.track);
+    setLevel(item.level);
   }
 
   function checkCode() {
@@ -204,7 +207,7 @@ export function LearnPage() {
     const report = [
       `# ${challenge.title}`,
       "",
-      `**Track:** ${track?.name ?? "Northwind Data Professional"}`,
+      `**Track:** ${track?.name ?? "Code Quest"}`,
       `**Business question:** ${challenge.business_question ?? challenge.coding.task}`,
       `**Metric and assumptions:** ${challenge.metric_contract ?? "Not specified"}`,
       "",
@@ -273,16 +276,23 @@ export function LearnPage() {
     }
   }
 
-  if (isLoading) return <section className="page-wrap learn-page"><div className="loading-line">Loading Code Quest...</div></section>;
+  if (isLoading) return (
+    <section className="page-wrap learn-page">
+      <CodeQuestNav />
+      <div className="loading-line">Loading Code Quest...</div>
+    </section>
+  );
   if (error || !session || !track || !challenge) return (
     <section className="page-wrap learn-page">
+      <CodeQuestNav />
       <div className="empty-state"><span className="eyebrow">Code Quest unavailable</span><h1>Connect to the learning service.</h1><p>{error instanceof Error ? error.message : "Start the FastAPI backend, then reload this page."}</p></div>
     </section>
   );
 
   return (
     <section className="page-wrap learn-page">
-      <LearningWorkspace
+      <CodeQuestNav />
+      <SqlWorkbench
         session={session}
         trackId={trackId}
         challenge={challenge}
@@ -318,13 +328,11 @@ export function LearnPage() {
         setChallengeSearch={setChallengeSearch}
         selectLevel={selectLevel}
         selectTrack={selectTrack}
-        selectCurriculum={selectCurriculum}
-        curriculumId={curriculumId}
-        curriculumTracks={curriculumTracks}
         completed={completed}
-        schema={session.schema}
         codeMutationPending={codeMutation.isPending}
         previewMutationPending={previewMutation.isPending}
+        reviewItems={review?.items ?? []}
+        onOpenReviewItem={openReviewItem}
       />
     </section>
   );
