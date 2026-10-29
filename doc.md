@@ -174,7 +174,7 @@ Code Quest exposes exactly two language modules. Each module contains its own gu
 | Python | `/learn/python/path` | `/learn/python/scratch` |
 | SQL | `/learn/sql/path` | `/learn/sql/scratch` |
 
-`/learn` redirects to `/learn/python/path`. The old `/learn/scratch/python` and `/learn/scratch/sql` routes redirect to the matching module Scratch route. The hybrid Case Files path stays a single cross-language project at `/learn/case-files`; it does not become a third language module. Python and SQL tracks, execution runners, drafts, progress identities, and workspace lifecycle remain separate.
+`/learn` is the Code Quest module chooser. Each language card opens a dedicated page that renders only that module's navigation, Path, and Scratch tabs; Python and SQL are never mixed on one page. The legacy `/learn/scratch/python` and `/learn/scratch/sql` routes redirect to the matching module Scratch route, and `/learn/challenges` returns to the chooser. The hybrid Case Files path stays a single cross-language project at `/learn/case-files`; it does not become a third language module. Python and SQL tracks, execution runners, drafts, progress identities, and workspace lifecycle remain separate.
 
 ---
 

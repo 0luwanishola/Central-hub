@@ -24,7 +24,11 @@ const descriptions: Record<string, string> = {
 
 const destinations = [
   { label: "Offline activities", detail: "Play a quick game", to: "/activities", terms: "game games play activity activities tic tac toe memory match number guess" },
-  { label: "Code Quest", detail: "Learn Python and SQL", to: "/learn", terms: "learn code python sql coding quest" },
+  { label: "Python Path", detail: "Guided Python lessons", to: "/learn/python/path", terms: "python path learn coding lesson challenge" },
+  { label: "Python Scratch", detail: "Try your own Python code", to: "/learn/python/scratch", terms: "python scratch sandbox run script playground" },
+  { label: "SQL Path", detail: "Guided SQL lessons", to: "/learn/sql/path", terms: "sql path learn query lesson challenge" },
+  { label: "SQL Scratch", detail: "Open your SQLite workspace", to: "/learn/sql/scratch", terms: "sql scratch sandbox sqlite database query" },
+  { label: "Code Quest", detail: "Choose Python, SQL, or Case Files", to: "/learn", terms: "learn code coding quest case files" },
   { label: "Quick notes", detail: "Write a reminder or idea", to: "/notes", terms: "note notes write reminder idea" },
   { label: "Digital tools", detail: "Browse every tool", to: "/tools", terms: "tools utility utilities catalog" },
 ];
@@ -111,53 +115,55 @@ export function CatalogPage({ showAll = false }: { showAll?: boolean }) {
   return (
     <section className="page-wrap dashboard-page">
       <header className="dashboard-heading">
-        <span className="eyebrow">Central Hub</span>
-        <h1>What do you need today?</h1>
-        <p>Everyday tools, quick activities, and a place to keep a thought.</p>
+        <span className="eyebrow">Central Hub / Your workspace</span>
+        <h1>What are you working on?</h1>
+        <p>Open a tool, pick up a coding path, or leave yourself a note.</p>
         <HomeSearch tools={readyTools} />
       </header>
 
-      <div className="hub-feature-grid">
-        <Link to="/activities" className="hub-feature-card">
-          <span className="hub-feature-icon"><Icon name="activities" /></span>
-          <span className="hub-feature-label">Play offline</span>
-          <h2>Quick activities</h2>
-          <p>Take a short break with three simple games that work on this device.</p>
-          <span className="hub-feature-meta">3 games <Icon name="arrow" /></span>
-        </Link>
-        <Link to="/learn" className="hub-feature-card">
-          <span className="hub-feature-icon"><Icon name="code" /></span>
-          <span className="hub-feature-label">Learn by playing</span>
-          <h2>Code Quest</h2>
-          <p>Write Python and SQL with starter code, hints, and instant feedback.</p>
-          <span className="hub-feature-meta">{learningSession ? `${learningSession.tracks.length} learning tracks` : "Learning tracks"} <Icon name="arrow" /></span>
-        </Link>
-        <Link to="/tools" className="hub-feature-card">
-          <span className="hub-feature-icon"><Icon name="tools" /></span>
-          <span className="hub-feature-label">Get things done</span>
-          <h2>Digital tools</h2>
-          <p>Format data, work with PDFs, generate codes, and more.</p>
-          <span className="hub-feature-meta">{tools.length ? `${tools.length} tools` : "Open catalog"} <Icon name="arrow" /></span>
-        </Link>
-        <Link to="/notes" className="hub-feature-card">
-          <span className="hub-feature-icon"><Icon name="notes" /></span>
-          <span className="hub-feature-label">Saved on this device</span>
-          <h2>Quick notes</h2>
-          <p>Jot down a reminder or idea. Your note stays in this browser.</p>
-          <span className="hub-feature-meta">Private scratchpad <Icon name="arrow" /></span>
-        </Link>
+      <div className="home-workspace-grid">
+        <section className="home-tools-section" aria-labelledby="home-tools-heading">
+          <div className="section-heading home-tools-heading">
+            <div>
+              <span className="eyebrow">{recentTools.length > 0 ? "Back to your recent work" : "Ready when you are"}</span>
+              <h2 id="home-tools-heading">{recentTools.length > 0 ? "Quick access" : "Start with a tool"}</h2>
+            </div>
+            <Link to="/tools" className="text-link">All tools <Icon name="chevron-right" /></Link>
+          </div>
+          {quickTools.length > 0
+            ? <ToolGrid tools={quickTools} />
+            : <div className="empty-state compact"><h2>No tools are available yet</h2><p>Start the tool catalog service or choose another part of your workspace.</p></div>}
+        </section>
+
+        <aside className="home-side-column" aria-label="Learning and personal spaces">
+          <Link to="/learn" className="home-code-quest-card">
+            <span className="home-code-quest-mark"><Icon name="code" /></span>
+            <span className="home-card-kicker">Python and SQL</span>
+            <h2>Code Quest</h2>
+            <p>Continue a guided Path or try an idea in Scratch. Each language has its own workspace.</p>
+            <span className="home-code-quest-progress">
+              {clearedChallenges > 0
+                ? `${clearedChallenges} challenges cleared · ${learningSession?.xp ?? 0} XP`
+                : "Python · SQL · Case Files"}
+              <Icon name="arrow" />
+            </span>
+            {totalChallenges > 0 && <span className="sr-only">{clearedChallenges} of {totalChallenges} challenges cleared</span>}
+          </Link>
+
+          <nav className="home-shortcut-list" aria-label="More from your workspace">
+            <Link to="/notes" className="home-shortcut">
+              <span className="home-shortcut-icon"><Icon name="notes" /></span>
+              <span><strong>Quick notes</strong><small>Leave yourself a reminder</small></span>
+              <Icon name="arrow" />
+            </Link>
+            <Link to="/activities" className="home-shortcut">
+              <span className="home-shortcut-icon"><Icon name="activities" /></span>
+              <span><strong>Quick activities</strong><small>Three small games for a break</small></span>
+              <Icon name="arrow" />
+            </Link>
+          </nav>
+        </aside>
       </div>
-
-      {clearedChallenges > 0 && <Link to="/learn" className="continue-quest-card"><span className="continue-quest-icon"><Icon name="code" /></span><span><strong>Continue Code Quest</strong><small>{clearedChallenges} of {totalChallenges} challenges cleared · {learningSession?.xp ?? 0} XP</small></span><Icon name="arrow" /></Link>}
-
-
-      {quickTools.length > 0 && <>
-        <div className="section-heading section-heading-tools">
-          <div><span className="eyebrow">{recentTools.length > 0 ? "Pick up where you left off" : "Ready to use"}</span><h2>{recentTools.length > 0 ? "Recent tools" : "Quick tools"}</h2></div>
-          <Link to="/tools" className="text-link">Browse all tools <Icon name="chevron-right" /></Link>
-        </div>
-        <ToolGrid tools={quickTools} />
-      </>}
     </section>
   );
 }
@@ -228,7 +234,7 @@ function ToolGrid({ tools }: { tools: Tool[] }) {
 function ToolCard({ tool }: { tool: Tool }) {
   const availability = tool.ready ? "Ready" : tool.requires ? "Needs setup" : "Planned";
   return (
-    <Link to={`/tool/${tool.id}`} className="tool-card" onClick={() => rememberTool(tool.id)}>
+    <Link to={`/tool/${tool.id}`} className="tool-card" data-category={tool.category} onClick={() => rememberTool(tool.id)}>
       <span className="tool-card-icon"><Icon name={iconForTool(tool.id, tool.category)} /></span>
       <div className="tool-card-content">
         <div className="tool-card-title"><h3>{tool.name}</h3><span className={`tool-status ${tool.ready ? "status-ready" : "status-soon"}`}>{availability}</span></div>

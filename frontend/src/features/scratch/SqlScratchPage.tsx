@@ -325,7 +325,7 @@ export function SqlScratchPage() {
   if (isLoading) {
     return (
       <section className="page-wrap scratch-page">
-        <CodeQuestNav />
+        <CodeQuestNav module="sql" />
         <div className="loading-line">Loading Code Quest...</div>
       </section>
     );
@@ -334,7 +334,7 @@ export function SqlScratchPage() {
   if (sessionError || !session) {
     return (
       <section className="page-wrap scratch-page">
-        <CodeQuestNav />
+        <CodeQuestNav module="sql" />
         <div className="empty-state">
           <span className="eyebrow">SQL Scratch unavailable</span>
           <h1>Connect to the learning service.</h1>
@@ -346,7 +346,7 @@ export function SqlScratchPage() {
 
   return (
     <section className="page-wrap scratch-page">
-      <CodeQuestNav />
+      <CodeQuestNav module="sql" />
       <span className="sr-only" id="quest-editor-help">SQL Scratch scripts are bounded and never graded. Each run is one workspace-managed transaction.</span>
       <span className="sr-only" id="quest-editor-shortcuts">Press Ctrl and Enter to run. Press Ctrl and the backquote key to show or hide the output panel.</span>
 

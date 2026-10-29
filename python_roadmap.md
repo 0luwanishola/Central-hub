@@ -4,7 +4,7 @@
 
 This document is the implementation brief for the Python learning experience in Code Quest. Follow it when revising the guided Python Path, its lessons, runner integration, or its connection to Python Scratch.
 
-**Implementation status (2026-10-29):** the two-module Python/SQL navigation, language-scoped Path and Scratch routes, and the 14-phase Python stage mapping are implemented. The pre-change descriptions below remain as design context; section 4.1 records the shipped phase map, and `README.md` describes current behavior.
+**Implementation status (2026-10-29):** the two-module Python/SQL navigation, language-scoped Path and Scratch routes, the Code Quest module chooser at `/learn`, and the 14-phase Python stage mapping are implemented. The pre-change descriptions below remain as design context; section 4.1 records the shipped phase map, and `README.md` describes current behavior.
 
 Code Quest is an all-in-one hub of useful tools. Python learning should therefore do two things well:
 
@@ -19,9 +19,9 @@ Treat the HTML file as a topic/resource proposal, not a verified authority for i
 
 ## 1.1 Code Quest section structure
 
-Code Quest currently presents three navigation choices: **Challenges**, **Python Scratch**, and **SQL Scratch**. Replace that top-level structure with two language modules: **Python** and **SQL**. Keep each language's guided path and scratch workspace as distinct modes within that language module.
+Code Quest formerly presented three navigation choices: **Challenges**, **Python Scratch**, and **SQL Scratch**. The implemented structure replaces that top-level layout with two language modules: **Python** and **SQL**. Keep each language's guided path and scratch workspace as distinct modes within that language module.
 
-| Current navigation choice/content | Destination in the new structure | What changes |
+| Former navigation choice/content | Destination in the new structure | What changes |
 |---|---|---|
 | **Challenges** — currently contains both Python and SQL learning tracks | Split by language: Python challenges become **Python → Path**; SQL challenges become **SQL → Path** | The combined challenge selector must no longer mix Python and SQL. Reuse the existing challenge engine, progress, and grading. |
 | **Python Scratch** | **Python → Scratch** | Keep the Python runner and free-form execution behavior. Change its navigation placement, not its purpose. |
@@ -34,17 +34,17 @@ The result is exactly two top-level language modules:
 | **Python** | Python Path, including the roadmap progression in section 4 | Python Scratch for arbitrary learner ideas |
 | **SQL** | SQL Path and its current guided challenges | SQL Scratch with its own SQLite workspace |
 
-This specifies exactly what is consolidated: the current **Challenges** choice is divided into its Python and SQL paths, and each path is grouped with the Scratch destination for the same language. This is navigation/page organization, not a backend merge. It does **not** combine Python with SQL, merge their runners, merge their workspace services, or make Scratch part of the graded path. Python Path and Python Scratch belong under Python; SQL Path and SQL Scratch belong under SQL. Keep their progress, editor state, workspace behavior, and execution rules separate.
+This specified exactly what was consolidated: the former combined **Challenges** choice was divided into its Python and SQL paths, and each path was grouped with the Scratch destination for the same language. This is navigation/page organization, not a backend merge. It does **not** combine Python with SQL, merge their runners, merge their workspace services, or make Scratch part of the graded path. Python Path and Python Scratch belong under Python; SQL Path and SQL Scratch belong under SQL. Keep their progress, editor state, workspace behavior, and execution rules separate.
 
 The curriculum also contains a hybrid **Case Files** path (`backend/curriculum/phases_case_files.py`) that intentionally uses SQL and Python together. Audit its current route and visibility before changing navigation. Do not delete it, duplicate its progress, or silently mislabel it as a Python-only or SQL-only course. Keep it as a clearly labeled cross-language project reachable from the two-module Code Quest area (one canonical route and one progress identity); if the current design cannot expose it without creating an unintended third top-level language module, present it as a project entry linked from the Python and SQL modules.
 
-Current frontend entry points to inspect are `frontend/src/app/App.tsx` (routes), `frontend/src/features/scratch/CodeQuestNav.tsx` (the three current navigation choices), `frontend/src/features/learning/LearnPage.tsx` (currently selects learning tracks), `frontend/src/features/learning/components/ChallengeExplorer.tsx` (challenge selector), `frontend/src/features/learning/components/SqlWorkbench.tsx` (despite its name, composes both language workbenches), `frontend/src/features/scratch/PythonScratchPage.tsx`, and `frontend/src/features/scratch/SqlScratchPage.tsx`. The current routes are `/learn`, `/learn/scratch/python`, and `/learn/scratch/sql`. Do not assume that route names or the present combined challenge screen are the desired final navigation.
+Current frontend entry points are `frontend/src/app/App.tsx` (routes), `frontend/src/features/learning/CodeQuestHomePage.tsx` (the `/learn` module chooser), `frontend/src/features/scratch/CodeQuestNav.tsx` (single-module navigation), `frontend/src/features/learning/LearnPage.tsx` (module-scoped Path view), `frontend/src/features/learning/components/ChallengeExplorer.tsx` (challenge selector), `frontend/src/features/learning/components/SqlWorkbench.tsx` (despite its name, composes both language workbenches from module-scoped data), `frontend/src/features/scratch/PythonScratchPage.tsx`, and `frontend/src/features/scratch/SqlScratchPage.tsx`. The current routes are `/learn` (chooser), `/learn/python/path`, `/learn/sql/path`, `/learn/python/scratch`, `/learn/sql/scratch`, and `/learn/case-files`. A module page renders only its own language navigation; the chooser is the only cross-language entry point.
 
 The desired user flow is:
 
 1. Choose **Python** or **SQL** as the Code Quest module.
 2. Within that language, choose **Path** for guided challenges or **Scratch** for independent work.
-3. Switching between Path and Scratch keeps the learner in the same language module. Switching languages takes the learner to the other module's corresponding mode, not to a shared Python/SQL editor.
+3. Switching between Path and Scratch keeps the learner in the same language module. Switching languages goes back through the Code Quest chooser to the other module's dedicated page; there is no shared Python/SQL editor or cross-language navigation inside a module page.
 4. The hybrid Case Files project remains reachable without becoming a third language module or being represented twice in progress/review data.
 
 Use clear language-specific titles and active navigation states. A learner in Python must not see SQL challenges mixed into the Python Path selector, and vice versa. Preserve a way to reach all existing supported learning content; audit any non-Python/SQL tracks before changing navigation rather than silently hiding or deleting them.
@@ -222,11 +222,11 @@ Complete these steps in order. Make each step a reviewable change and update thi
 
 ### Step 2 — Agree the phase map in code terms
 
-Before curriculum edits, turn the source-to-destination mapping in section 1.1 into an implementation checklist. The agreed mapping is: split the current combined Challenges choice into Python Path and SQL Path; group Python Path with Python Scratch under Python; group SQL Path with SQL Scratch under SQL; retain Case Files as one cross-language project. Keep old routes working or redirect them; do not change track IDs, challenge IDs, browser draft keys, or progress identities as a side effect of navigation. Implement the frontend route/navigation changes in Step 6.
+Before curriculum edits, turn the source-to-destination mapping in section 1.1 into an implementation checklist. The agreed mapping was: split the former combined Challenges choice into Python Path and SQL Path; group Python Path with Python Scratch under Python; group SQL Path with SQL Scratch under SQL; retain Case Files as one cross-language project. Keep old routes working or redirect them; do not change track IDs, challenge IDs, browser draft keys, or progress identities as a side effect of navigation. Implement the frontend route/navigation changes in Step 6.
 
 Then map every existing challenge in `phases_python.py` to one target outcome from section 4. Mark content that is repeated, out of order, missing, or attached to a runner that cannot support it. Preserve useful existing work: first steps, guided foundations, real CPython transition, file/data tasks, SQLite bridge, algorithms, tests/refactoring, and capstones. Decide whether the current 14 phases can express the revised map or whether one additional phase is warranted. Prefer no renumbering if phases are persisted against learner progress. Keep optional advanced DSA and professional tooling content visibly optional or in its own future path.
 
-**Deliverables:** (a) a route/navigation mapping from the three current choices to the two language modules, including Case Files; and (b) final phase titles, one-sentence outcomes, prerequisite order, runner, and dataset for each Python phase.
+**Deliverables:** (a) a route/navigation mapping from the three former choices to the two language modules, including Case Files; and (b) final phase titles, one-sentence outcomes, prerequisite order, runner, and dataset for each Python phase.
 
 ### Step 3 — Adjust phase progression and metadata
 
@@ -265,11 +265,11 @@ Do not grow the path by adding many isolated syntax cards. Prefer a smaller numb
 
 ### Step 6 — Update learner-facing navigation and copy
 
-1. Change the Code Quest top-level navigation from **Challenges / Python Scratch / SQL Scratch** to two language modules: **Python** and **SQL**. Each module must provide its own **Path** and **Scratch** destinations as specified in section 1.1.
+1. Rework the Code Quest top-level navigation from the former **Challenges / Python Scratch / SQL Scratch** layout to two language modules: **Python** and **SQL**. Each module must provide its own **Path** and **Scratch** destinations as specified in section 1.1.
 2. Update `frontend/src/app/App.tsx` routes and `frontend/src/features/scratch/CodeQuestNav.tsx` (or replace the latter with a clearly named Code Quest navigation component) so the selected language and mode are visible in the URL and active navigation state.
 3. Rework `frontend/src/features/learning/LearnPage.tsx` so a Python Path view selects only Python learning content and a SQL Path view selects only SQL learning content. Reuse existing challenge/session behavior where possible; do not duplicate grading, progression, or review logic just to add language-specific entry points.
 4. Preserve the separate Scratch pages and APIs: Python Scratch stays connected to the Python scratch endpoint/service; SQL Scratch stays connected to the SQL workspace and query service. Do not route both languages through one editor or runner.
-5. Choose stable, readable language-specific URLs based on the current router. Keep existing `/learn` and `/learn/scratch/python`, `/learn/scratch/sql` URLs working as redirects or compatible aliases where practical, so existing bookmarks do not break. The default `/learn` destination should lead to a deliberate Path view, not an ambiguous combined Python/SQL selector.
+5. Choose stable, readable language-specific URLs based on the current router. Keep existing `/learn` and `/learn/scratch/python`, `/learn/scratch/sql` URLs working as a chooser or redirects where practical, so existing bookmarks do not break. The `/learn` destination is now a module chooser; opening Python or SQL leads to a dedicated Path view containing only that language.
 6. Group the Python Path by the three stages from section 4 using existing phase metadata and explorer behavior where possible.
 7. Show phase purpose and runner transitions in language learners understand; do not expose internal runner names as product copy. Make optional/advanced content distinguishable from the core progression.
 8. Preserve responsive behavior, keyboard-accessible controls, and existing draft, workspace, and progress behavior. Do not change draft keys or learner progress IDs as a side effect of changing routes.

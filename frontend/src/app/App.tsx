@@ -9,6 +9,7 @@ import { ActivitiesPage } from "../features/activities/ActivitiesPage";
 import { NotesPage } from "../features/notes/NotesPage";
 
 const LearnPage = lazy(() => import("../features/learning/LearnPage").then(({ LearnPage: page }) => ({ default: page })));
+const CodeQuestHomePage = lazy(() => import("../features/learning/CodeQuestHomePage").then(({ CodeQuestHomePage: page }) => ({ default: page })));
 const PythonScratchPage = lazy(() => import("../features/scratch/PythonScratchPage").then(({ PythonScratchPage: page }) => ({ default: page })));
 const SqlScratchPage = lazy(() => import("../features/scratch/SqlScratchPage").then(({ SqlScratchPage: page }) => ({ default: page })));
 
@@ -24,7 +25,7 @@ export function App() {
           <Route path="category/:categoryId" element={<CatalogPage />} />
           <Route path="activities" element={<ActivitiesPage />} />
           <Route path="notes" element={<NotesPage />} />
-          <Route path="learn" element={<Navigate to="/learn/python/path" replace />} />
+          <Route path="learn" element={<Suspense fallback={scratchLoading}><CodeQuestHomePage /></Suspense>} />
           <Route path="learn/python" element={<Navigate to="/learn/python/path" replace />} />
           <Route path="learn/sql" element={<Navigate to="/learn/sql/path" replace />} />
           <Route path="learn/python/path" element={<Suspense fallback={scratchLoading}><LearnPage key="python-path" module="python" /></Suspense>} />
@@ -34,7 +35,7 @@ export function App() {
           <Route path="learn/sql/scratch" element={<Suspense fallback={scratchLoading}><SqlScratchPage /></Suspense>} />
           <Route path="learn/scratch/python" element={<Navigate to="/learn/python/scratch" replace />} />
           <Route path="learn/scratch/sql" element={<Navigate to="/learn/sql/scratch" replace />} />
-          <Route path="learn/challenges" element={<Navigate to="/learn/python/path" replace />} />
+          <Route path="learn/challenges" element={<Navigate to="/learn" replace />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="tool/live-score" element={<LiveScorePage />} />
           <Route path="tool/:toolId" element={<ToolPage />} />

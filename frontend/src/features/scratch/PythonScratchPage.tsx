@@ -110,7 +110,7 @@ export function PythonScratchPage() {
 
   return (
     <section className="page-wrap scratch-page">
-      <CodeQuestNav />
+      <CodeQuestNav module="python" />
       <span className="sr-only" id="quest-editor-help">Each Python Scratch run is bounded, starts in a fresh process, and is never graded.</span>
       <span className="sr-only" id="quest-editor-shortcuts">Press Ctrl and Enter to run. Press Ctrl and the backquote key to show or hide the output panel.</span>
 

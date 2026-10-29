@@ -24,7 +24,7 @@ function nextAvailableLevel(completed: number[], total: number): number {
   return Math.min(next, total - 1);
 }
 
-export function LearnPage({ module = "python" }: { module?: CodeQuestModuleId }) {
+export function LearnPage({ module }: { module: CodeQuestModuleId }) {
   const queryClient = useQueryClient();
   const moduleInfo = getCodeQuestModule(module);
   const { data: session, isLoading, error } = useQuery({
@@ -294,20 +294,20 @@ export function LearnPage({ module = "python" }: { module?: CodeQuestModuleId })
 
   if (isLoading) return (
     <section className="page-wrap learn-page">
-      <CodeQuestNav />
+      <CodeQuestNav module={module} />
       <div className="loading-line">Loading Code Quest...</div>
     </section>
   );
   if (error || !session || !track || !challenge) return (
     <section className="page-wrap learn-page">
-      <CodeQuestNav />
+      <CodeQuestNav module={module} />
       <div className="empty-state"><span className="eyebrow">Code Quest unavailable</span><h1>Connect to the learning service.</h1><p>{error instanceof Error ? error.message : "Start the FastAPI backend, then reload this page."}</p></div>
     </section>
   );
 
   return (
     <section className="page-wrap learn-page">
-      <CodeQuestNav />
+      <CodeQuestNav module={module} />
       <SqlWorkbench
         session={session}
         tracks={moduleTracks}

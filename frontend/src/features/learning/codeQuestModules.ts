@@ -8,6 +8,7 @@ export type CodeQuestModule = {
   title: string;
   eyebrow: string;
   detail: string;
+  description: string;
   path: string;
   scratch?: string;
   defaultTrackId: string;
@@ -21,6 +22,7 @@ export const CODE_QUEST_MODULES: CodeQuestModule[] = [
     title: "Python Path",
     eyebrow: "Code Quest · Python",
     detail: "Guided path and free-form scripts",
+    description: "Build from first steps through real Python files, modules, data, classes, testing, and capstones. Python Scratch is a separate free-form workspace.",
     path: "/learn/python/path",
     scratch: "/learn/python/scratch",
     defaultTrackId: "python_path",
@@ -32,6 +34,7 @@ export const CODE_QUEST_MODULES: CodeQuestModule[] = [
     title: "SQL Path",
     eyebrow: "Code Quest · SQL",
     detail: "Guided queries and a SQLite workspace",
+    description: "Follow a guided path from SELECT through joins, windows, schema design, and performance. SQL Scratch keeps its own persistent temporary SQLite workspace.",
     path: "/learn/sql/path",
     scratch: "/learn/sql/scratch",
     defaultTrackId: "sql_path",
@@ -45,6 +48,7 @@ export const CASE_FILES_PROJECT: CodeQuestModule = {
   title: "Case Files",
   eyebrow: "Code Quest · Cross-language project",
   detail: "One mystery, solved with SQL records and Python forensics",
+  description: "One cross-language mystery solved with SQL records and Python forensics. Case Files keeps its own canonical route and progress identity.",
   path: "/learn/case-files",
   defaultTrackId: "case_files",
   language: "mixed",

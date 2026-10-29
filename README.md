@@ -150,7 +150,7 @@
   - **Foundations challenge content** — earlier Python and SQL material remains available inside its language module with its original progression and grading behavior.
   - **Case Files** — the hybrid SQL + Python mystery path remains one cross-language project with one canonical route and progress identity at `/learn/case-files`.
 
-  Code Quest routes are language-specific: `/learn/python/path`, `/learn/sql/path`, `/learn/python/scratch`, and `/learn/sql/scratch`. The old `/learn`, `/learn/scratch/python`, and `/learn/scratch/sql` URLs redirect to the matching module. Python and SQL keep separate challenge content, progress keys, runners, drafts, and workspace behavior.
+  `/learn` is the Code Quest module chooser: Python, SQL, and Case Files are separate destinations. Opening Python or SQL shows only that module's navigation, Path, and Scratch areas; the other language does not appear there. Module routes are `/learn/python/path`, `/learn/sql/path`, `/learn/python/scratch`, and `/learn/sql/scratch`. The legacy `/learn/scratch/python` and `/learn/scratch/sql` URLs redirect to the matching module Scratch route, and `/learn/challenges` returns to the chooser. Python and SQL keep separate challenge content, progress keys, runners, drafts, and workspace behavior.
 
   All sandboxes use SQLite through Python standard library; no separate database server or driver is required. The shared registry in `backend/datasets/` includes Northwind, StreamHub, Bookings, Reviews, and the StreamHub Case File dataset:
 
