@@ -1,5 +1,5 @@
 import { useState, type KeyboardEvent } from "react";
-import type { LearningSession, LearningTrackId, LearningChallenge, LearningCodeResult, LearningReviewItem } from "../../../types";
+import type { LearningSession, LearningTrack, LearningTrackId, LearningChallenge, LearningCodeResult, LearningReviewItem } from "../../../types";
 import { SyntaxEditor } from "../SyntaxEditor";
 import { ChallengeBrief } from "./ChallengeBrief";
 import { SchemaNavigator } from "./SchemaNavigator";
@@ -9,6 +9,9 @@ import { Icon } from "../../../ui/Icon";
 
 export interface SqlWorkbenchProps {
   session: LearningSession;
+  tracks: LearningTrack[];
+  moduleTitle: string;
+  moduleEyebrow: string;
   trackId: LearningTrackId;
   challenge: LearningChallenge;
   code: string;
@@ -94,6 +97,9 @@ function runnerLabels(challenge: LearningChallenge) {
 export function SqlWorkbench(props: SqlWorkbenchProps) {
   const {
     session,
+    tracks,
+    moduleTitle,
+    moduleEyebrow,
     trackId,
     challenge,
     code,
@@ -135,7 +141,7 @@ export function SqlWorkbench(props: SqlWorkbenchProps) {
     onOpenReviewItem,
   } = props;
 
-  const track = session.tracks.find((t) => t.id === trackId)!;
+  const track = tracks.find((t) => t.id === trackId) ?? tracks[0]!;
   const coding = challenge.coding;
   const hints = coding.hints ?? [];
   const plan = coding.plan ?? [];
@@ -145,16 +151,16 @@ export function SqlWorkbench(props: SqlWorkbenchProps) {
   const labels = runnerLabels(challenge);
   const challengeIndex = track.challenges.findIndex((item) => item.id === challenge.id);
   const phase = track.phases?.find((item) => item.id === challenge.phase_id);
-  const clearedTotal = Object.values(session.progress).reduce((total, levels) => total + (levels?.length ?? 0), 0);
-  const challengeTotal = session.tracks.reduce((total, t) => total + t.challenges.length, 0);
+  const clearedTotal = tracks.reduce((total, item) => total + (session.progress[item.id]?.length ?? 0), 0);
+  const challengeTotal = tracks.reduce((total, item) => total + item.challenges.length, 0);
 
   return (
     <div className="sql-workbench">
       {/* Top bar - Code Quest heading and progress */}
       <header className="workbench-topbar">
         <div className="workbench-brand">
-          <span className="eyebrow">Learn by building</span>
-          <h1>Code Quest</h1>
+          <span className="eyebrow">{moduleEyebrow}</span>
+          <h1>{moduleTitle}</h1>
         </div>
         <div className="workbench-scorebar">
           <div><span className="quest-score-icon"><Icon name="trophy" /></span><span><strong>{session.xp} XP</strong><small>Total points</small></span></div>
@@ -165,7 +171,7 @@ export function SqlWorkbench(props: SqlWorkbenchProps) {
       {/* Track switcher */}
       <div className="workbench-switchers">
         <div className="track-switcher" role="group" aria-label="Choose a learning track">
-          {session.tracks.map((item) => (
+          {tracks.map((item) => (
             <button
               key={item.id}
               type="button"

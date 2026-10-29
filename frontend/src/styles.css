@@ -884,6 +884,33 @@ button, a, input, textarea, select { touch-action: manipulation; }
   gap: var(--space-3);
 }
 
+.explorer-stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.explorer-stage-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 0 2px;
+}
+
+.explorer-stage-heading strong {
+  color: var(--accent-strong);
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+.explorer-stage-heading span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
 .explorer-tier {
   border: 1px solid var(--line);
   border-radius: var(--radius-control);
@@ -3083,38 +3110,112 @@ button, a, input, textarea, select { touch-action: manipulation; }
   width: min(100%, 1400px);
 }
 
-.quest-mode-nav {
+.quest-module-nav {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
   margin-bottom: var(--space-4);
-  padding: 5px;
+}
+
+.quest-module-list {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 560px;
+  gap: var(--space-2);
+}
+
+.quest-module {
+  min-width: 0;
+  flex: 1 1 250px;
+  padding: 9px;
   border: 1px solid var(--line);
   border-radius: 13px;
   background: var(--surface);
   box-shadow: var(--shadow-card);
+  transition: border-color .16s, background .16s;
 }
 
-.quest-mode-link {
+.quest-module-active {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+.quest-module-heading {
   display: flex;
   min-width: 0;
-  flex: 1 1 190px;
   align-items: center;
   gap: var(--space-2);
-  padding: 9px 11px;
-  border: 1px solid transparent;
-  border-radius: 9px;
+  padding: 2px 3px 8px;
   color: var(--ink-soft);
+}
+
+.quest-module-heading strong,
+.quest-module-heading small,
+.quest-project-link strong,
+.quest-project-link small {
+  display: block;
+}
+
+.quest-module-heading strong,
+.quest-project-link strong {
+  color: inherit;
+  font-size: 12px;
+}
+
+.quest-module-heading small,
+.quest-project-link small {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.quest-module-modes {
+  display: flex;
+  gap: 5px;
+}
+
+.quest-mode-tab {
+  flex: 1 1 0;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  color: var(--ink-soft);
+  font-size: 11px;
+  font-weight: 650;
+  text-align: center;
   transition: border .16s, background .16s, color .16s;
 }
 
-.quest-mode-link:hover {
+.quest-mode-tab:hover {
   border-color: var(--accent-line);
-  background: var(--surface-soft);
+  background: var(--surface);
   color: var(--ink);
 }
 
-.quest-mode-link-active {
+.quest-mode-tab-active {
+  border-color: var(--accent-line);
+  background: var(--surface);
+  color: var(--accent-strong);
+}
+
+.quest-project-link {
+  display: flex;
+  min-width: 0;
+  flex: 0 1 280px;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  color: var(--ink-soft);
+  transition: border-color .16s, background .16s, color .16s;
+}
+
+.quest-project-link:hover,
+.quest-project-link-active {
   border-color: var(--accent-line);
   background: var(--accent-soft);
   color: var(--accent-strong);
@@ -3131,24 +3232,9 @@ button, a, input, textarea, select { touch-action: manipulation; }
   color: var(--accent-strong);
 }
 
-.quest-mode-link-active .quest-mode-icon {
+.quest-module-active .quest-mode-icon,
+.quest-project-link-active .quest-mode-icon {
   background: var(--surface);
-}
-
-.quest-mode-link strong,
-.quest-mode-link small {
-  display: block;
-}
-
-.quest-mode-link strong {
-  color: inherit;
-  font-size: 12px;
-}
-
-.quest-mode-link small {
-  margin-top: 2px;
-  color: var(--muted);
-  font-size: 10px;
 }
 
 .scratch-header {
@@ -3850,11 +3936,13 @@ body.scratch-panel-dragging * {
 }
 
 @media (max-width: 740px) {
-  .quest-mode-nav {
+  .quest-module-nav,
+  .quest-module-list {
     flex-direction: column;
   }
 
-  .quest-mode-link {
+  .quest-module,
+  .quest-project-link {
     flex-basis: auto;
   }
 

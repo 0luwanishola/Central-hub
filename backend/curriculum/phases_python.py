@@ -1,5 +1,9 @@
 """Python path: 14 phases from first print to capstone projects.
 
+The path is grouped into three learner-facing stages: Python Foundations
+(phases 1-6), Practical Python (phases 7-9), and Python Engineering
+(phases 10-14).
+
 Phases 1-6 run in the guided interpreter (safe, instant feedback). Phases 7-14
 run real CPython in an isolated subprocess, and phase 11 introduces the read-only
 SQLite bridge so Python programs can query the same datasets as the SQL path.
@@ -117,11 +121,12 @@ PHASE_1 = phase(
             capstone_rubric=["Three variables are used", "Every line is built with an f-string", "The age is computed, not typed"],
         ),
     ],
+    stage="Python Foundations",
 )
 
 PHASE_2 = phase(
     "py-2-lists-loops",
-    "Lists and Loops",
+    "Collections and Loops",
     "Foundations",
     "Index, iterate, count, and sum lists of real product data.",
     [
@@ -192,11 +197,12 @@ PHASE_2 = phase(
             capstone_rubric=["A for loop visits every price", "An if selects prices above 30", "Both count and total are computed, not typed"],
         ),
     ],
+    stage="Python Foundations",
 )
 
 PHASE_3 = phase(
     "py-3-conditions",
-    "Conditions and Logic",
+    "Decisions and Logic",
     "Foundations",
     "Teach your programs to choose: if, else, elif, and combining tests.",
     [
@@ -268,11 +274,12 @@ PHASE_3 = phase(
             capstone_rubric=["An if / elif / else chain is used", "years[:6] limits the output to six lines", "Every label comes from the year's value"],
         ),
     ],
+    stage="Python Foundations",
 )
 
 PHASE_4 = phase(
     "py-4-strings",
-    "Strings in Depth",
+    "Text and String Methods",
     "Core skills",
     "Slice, clean, split, and reshape text — using messy real booking data.",
     [
@@ -342,6 +349,7 @@ PHASE_4 = phase(
             capstone_rubric=["Ten lines are printed", "Whitespace is stripped", "Names are title-cased"],
         ),
     ],
+    stage="Python Foundations",
 )
 
 PHASE_5 = phase(
@@ -417,6 +425,7 @@ PHASE_5 = phase(
             capstone_rubric=["Counts are built with .get()", "The top type is found with a loop, not guessed", "Devices are deduplicated with a set"],
         ),
     ],
+    stage="Python Foundations",
 )
 
 PHASE_6 = phase(
@@ -493,13 +502,14 @@ PHASE_6 = phase(
             capstone_rubric=["rating_summary returns a dict", "All five stars are initialized", "Output runs from 5 down to 1"],
         ),
     ],
+    stage="Python Foundations",
 )
 
 PHASE_7 = phase(
     "py-7-real-python",
-    "Real Python Kickoff",
-    "Real Python",
-    "The training wheels come off: real CPython, files, and full syntax.",
+    "Real Python and Modules",
+    "Practical Python",
+    "The training wheels come off: real CPython, imports, and standard-library tools.",
     [
         challenge(
             "py-07-01",
@@ -551,6 +561,26 @@ PHASE_7 = phase(
             checks={"files": ["notes.txt"]},
         ),
         challenge(
+            "py-07-06",
+            "Import a toolbox",
+            "Modules and imports",
+            "Use two standard-library modules: import math and from statistics import mean.\nPrint exactly two lines:\nroot: 7.0\nmean: 5.0\n\nUse math.sqrt(49) and mean([3.0, 5.0, 7.0]).",
+            "import math\nfrom statistics import mean\n\n# print the square root of 49, then the mean of [3.0, 5.0, 7.0]\n",
+            'import math\nfrom statistics import mean\n\nprint(f"root: {math.sqrt(49)}")\nprint(f"mean: {mean([3.0, 5.0, 7.0])}")',
+            hints=[
+                "math.sqrt(49) returns 7.0.",
+                "statistics.mean takes a list of numbers and returns their average.",
+            ],
+            plan=[
+                "Import the module and the named function.",
+                "Call math.sqrt on 49 and print the result.",
+                "Call mean on the three-number list and print the result.",
+            ],
+            success="You imported reusable tools instead of writing everything yourself.",
+            concept="import brings a module into your script; from module import name brings one function. The standard library already ships with Python. Installing third-party packages with pip is a separate step, and virtual environments keep those installs isolated.",
+            runner="python_real",
+        ),
+        challenge(
             "py-07-05",
             "Capstone: receipt printer",
             "Files + computation",
@@ -566,13 +596,14 @@ PHASE_7 = phase(
             capstone_rubric=["receipt.txt exists with the right two lines", "The total is computed", "Two decimals on the money line"],
         ),
     ],
+    stage="Practical Python",
 )
 
 PHASE_8 = phase(
     "py-8-files-data",
-    "Files and Data",
-    "Real Python",
-    "Read CSVs, parse rows, and write your own report files.",
+    "Files, Paths, and Reports",
+    "Practical Python",
+    "Read text, CSV, and JSON files with pathlib, then write your own report files.",
     [
         challenge(
             "py-08-01",
@@ -628,6 +659,29 @@ PHASE_8 = phase(
             checks={"files": ["summary.txt"]},
         ),
         challenge(
+            "py-08-06",
+            "Paths and JSON",
+            "pathlib + json",
+            "reviews.csv is in the workspace. Use pathlib.Path to open it, count its data rows with csv.DictReader, build a dict named summary with source (the file name) and rows (the data-row count), write it to summary.json with sorted keys, then print the same JSON text.\nExpected output:\n{\"rows\": 60, \"source\": \"reviews.csv\"}",
+            "import csv\nimport json\nfrom pathlib import Path\n\n# read reviews.csv, count data rows, write summary.json, print the JSON text\n",
+            'import csv\nimport json\nfrom pathlib import Path\n\npath = Path("reviews.csv")\nwith path.open(newline="") as handle:\n    rows = list(csv.DictReader(handle))\nsummary = {"source": path.name, "rows": len(rows)}\nPath("summary.json").write_text(json.dumps(summary, sort_keys=True), encoding="utf-8")\nprint(json.dumps(summary, sort_keys=True))',
+            hints=[
+                "Path(\"reviews.csv\").name gives the file name.",
+                "json.dumps(summary, sort_keys=True) makes the key order predictable.",
+                "len(rows) after csv.DictReader counts data rows without the header.",
+            ],
+            plan=[
+                "Create a Path for reviews.csv.",
+                "Read its rows with csv.DictReader and count them.",
+                "Build the summary dict, write it as sorted JSON, then print the same text.",
+            ],
+            success="Path objects and JSON turn files into portable data.",
+            concept="pathlib treats paths as objects with useful methods; json.dumps turns Python dictionaries into text that other programs can read.",
+            runner="python_real",
+            fixtures=[{"file": "reviews.csv", "dataset": "reviews", "query": "SELECT review_id, rating FROM reviews ORDER BY review_id LIMIT 60", "format": "csv"}],
+            checks={"files": ["summary.json"]},
+        ),
+        challenge(
             "py-08-05",
             "Capstone: product report",
             "CSV report",
@@ -644,12 +698,13 @@ PHASE_8 = phase(
             capstone_rubric=["report.txt exists with both lines", "Non-available products are excluded", "Two decimals on the average"],
         ),
     ],
+    stage="Practical Python",
 )
 
 PHASE_9 = phase(
     "py-9-errors",
     "Errors and Validation",
-    "Real Python",
+    "Practical Python",
     "Catch what breaks, raise clear errors, and guard functions with tests.",
     [
         challenge(
@@ -715,12 +770,13 @@ PHASE_9 = phase(
             capstone_rubric=["Both checks raise ValueError", "The sample list is processed in a loop", "Counts print exactly two lines"],
         ),
     ],
+    stage="Practical Python",
 )
 
 PHASE_10 = phase(
     "py-10-classes",
-    "Classes and Objects",
-    "Real Python",
+    "Classes and Composition",
+    "Engineering",
     "Bundle data and behavior into your own types.",
     [
         challenge(
@@ -786,12 +842,13 @@ PHASE_10 = phase(
             capstone_rubric=["Item.total_value() computes price * quantity", "Inventory stores a list and prints per item", "Totals have two decimals"],
         ),
     ],
+    stage="Python Engineering",
 )
 
 PHASE_11 = phase(
     "py-11-sql-bridge",
-    "The SQL Bridge",
-    "Real Python",
+    "Python and SQL Data",
+    "Engineering",
     "Query the same databases as the SQL path, right from Python.",
     [
         challenge(
@@ -862,6 +919,7 @@ PHASE_11 = phase(
             capstone_rubric=["Three status lines print in order", "Revenue comes from SQL SUM", "Cents are converted with two decimals"],
         ),
     ],
+    stage="Python Engineering",
 )
 
 PHASE_12 = phase(
@@ -937,6 +995,7 @@ PHASE_12 = phase(
             capstone_rubric=["Tuples deduplicate inside a set", "Counts come from one file pass", "Both summary lines print correctly"],
         ),
     ],
+    stage="Python Engineering",
 )
 
 PHASE_13 = phase(
@@ -1009,6 +1068,7 @@ PHASE_13 = phase(
             capstone_rubric=["clean_price handles $, spaces, and plain numbers", "At least three asserts run", "Output is exactly: suite ok"],
         ),
     ],
+    stage="Python Engineering",
 )
 
 PHASE_14 = phase(
@@ -1096,12 +1156,13 @@ PHASE_14 = phase(
             capstone_rubric=["Averages computed per category", "Lines sorted and printed", "dashboard.txt matches the printed lines"],
         ),
     ],
+    stage="Python Engineering",
 )
 
 PATH = path(
     "python_path",
     "Python Path",
-    "14 phases from your first print() to real projects with files, classes, tests, and the SQL bridge.",
+    "14 phases across Foundations, Practical Python, and Engineering: from your first print() to files, modules, classes, tests, and the SQL bridge.",
     "python",
     [
         PHASE_1, PHASE_2, PHASE_3, PHASE_4, PHASE_5, PHASE_6, PHASE_7,

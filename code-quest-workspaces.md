@@ -9,6 +9,7 @@
 
 Stages 0–3 are implemented; Stage 4 (career-path content audit) and Stage 5 (further module extraction) remain open.
 
+- **Code Quest navigation** now presents two language modules, **Python** and **SQL**, each with a **Path** and **Scratch** mode. The hybrid **Case Files** project is a separate cross-language link with one canonical route and progress identity.
 - **Python Scratch** (`POST /api/learning/scratch/python/run`) reuses the hardened `python_runner` subprocess. Results are shaped by `backend/scratch/python_service.py`; each run returns bounded stdout/stderr and up to 10 UTF-8 text artifacts (64 KiB each, 256 KiB total) and never enters challenge grading.
 - **SQL Scratch** uses `backend/scratch/sql_workspaces.py` for token/ownership/lifecycle policy and `backend/scratch/sql_service.py` for atomic multi-statement execution through `sql_runner.workspace_authorizer()`. Learner transaction control, temp schema objects, PRAGMA, ATTACH/DETACH, VACUUM, extension loading, and file functions are denied server-side.
 - Routes are registered in `backend/main.py` under `/api/learning/scratch`. All limits come from `backend/scratch/limits.py`; request models use `extra="forbid"` so clients cannot override timeouts, paths, or caps.
@@ -24,7 +25,7 @@ Code Quest must offer two clearly distinct modes for both Python and SQL:
 
 Python scratch mode is a general-purpose Python code runner. SQL scratch mode is a general-purpose SQL workspace over a disposable SQLite database, optionally seeded from one of the app's registered learning datasets. Scratch means a contained workspace; it does not mean access to the host shell, the repository, arbitrary host files, or a production database.
 
-The UI may call these areas **Learn** and **Scratch** or **Challenges** and **Scratchpad**. The product copy must say that runs are bounded and must not imply that the workspace is a full operating-system terminal.
+The UI calls the guided area **Path** and the open area **Scratch**. The product copy must say that runs are bounded and must not imply that the workspace is a full operating-system terminal.
 
 ## 2. Current architecture and reuse points
 
@@ -38,10 +39,10 @@ The relevant current implementation is:
 - `backend/sql_runner.py`: SQLite statement splitting, read-only and disposable scratch modes, authorizer policy, result caps, and progress/time limits.
 - `backend/datasets/`: deterministic SQLite dataset registry and schema metadata.
 - `frontend/src/features/learning/LearnPage.tsx`: Code Quest session, selected track/challenge, editor state, drafts, and learning mutations.
-- `frontend/src/features/learning/components/SqlWorkbench.tsx`: current shared challenge workspace composition despite its SQL-oriented filename; it displays both Python and SQL challenges.
+- `frontend/src/features/learning/components/SqlWorkbench.tsx`: current shared challenge workspace composition despite its SQL-oriented filename; it displays the selected module's Python or SQL challenges.
 - `frontend/src/services/apiClient.ts` and `frontend/src/types/index.ts`: frontend API wrappers and contracts.
 
-Do not create separate copies of the existing Python or SQL execution engines for scratch mode. Add explicit scratch service/API flows that reuse the existing engines while bypassing challenge grading and progression. The current SQL `mode="scratch"` is a per-challenge disposable database for curriculum lessons; it is not yet a learner-owned persistent scratch workspace.
+Do not create separate copies of the existing Python or SQL execution engines for scratch mode. Add explicit scratch service/API flows that reuse the existing engines while bypassing challenge grading and progression. The SQL `mode="scratch"` per-challenge path remains a curriculum lesson database; the learner-owned SQL Scratch workspace is the separate persistent temporary workspace described below.
 
 ## 3. Core behavior contract
 
@@ -254,9 +255,9 @@ Keep v1 SQLite-only. Mark dialect-specific lessons and syntax as SQLite. Teach t
 - Keep `ChallengeBrief`, `ChallengeExplorer`, `LearningOutputPanel`, `PredictCheck`, and `SchemaNavigator` as focused presentation components.
 - Keep the Python and SQL execution policies in separate backend runners.
 - Keep Python Scratch and SQL Scratch as separate workspace components because their state models differ: Python resets process state each run; SQL persists database state.
-- Rename `SqlWorkbench.tsx` to a neutral name such as `ChallengeWorkbench.tsx` only if that reduces confusion during this work; it currently composes both language experiences. Do not mix scratch-specific state into this challenge workbench.
+- Rename `SqlWorkbench.tsx` to a neutral name such as `ChallengeWorkbench.tsx` only if that reduces confusion during this work; it currently composes the selected module's challenge experience. Do not mix scratch-specific state into this challenge workbench.
 - Split `LearnPage.tsx` if needed into a thin challenge page and a small challenge-session hook/controller. Keep API transport in `apiClient.ts`.
-- Add a `scratch/` frontend feature directory with `PythonScratchPage`/`PythonScratchWorkspace` and `SqlScratchPage`/`SqlScratchWorkspace`. Keep `/learn` as the existing Challenges route; add `/learn/scratch/python` and `/learn/scratch/sql` routes. Add visible Code Quest navigation between Challenges and Scratch, and between the two scratch languages. Browser back/forward must restore the selected route.
+- Add a `scratch/` frontend feature directory with `PythonScratchPage`/`PythonScratchWorkspace` and `SqlScratchPage`/`SqlScratchWorkspace`. Code Quest now has two top-level language modules: `/learn/python/path` and `/learn/sql/path` are the guided Path routes; `/learn/python/scratch` and `/learn/sql/scratch` are the Scratch routes. `/learn` redirects to `/learn/python/path`, and the old `/learn/scratch/python` and `/learn/scratch/sql` URLs redirect to their module routes. The hybrid Case Files project remains at `/learn/case-files`. Add visible navigation between Python and SQL and between each module's Path and Scratch modes. Browser back/forward must restore the selected route.
 - Add dedicated TypeScript request/result types. Do not widen `LearningCodeResult` until it ambiguously represents challenge grading and scratch execution.
 
 ### 7.2 Suggested backend boundaries
@@ -348,7 +349,7 @@ The feature is complete only when all applicable criteria hold:
 
 ### Python
 
-- A learner can switch from Python Challenges to Python Scratch.
+- A learner can switch from Python Path to Python Scratch without leaving the Python module.
 - Scratch accepts code unrelated to any current lesson and returns its output without expected-answer grading.
 - A scratch run does not change XP, progress, badges, hints, completion, or review queue.
 - Each run starts fresh; a subsequent run does not retain variables from the previous run.

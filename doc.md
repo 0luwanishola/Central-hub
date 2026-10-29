@@ -1,8 +1,8 @@
 # Code Quest — Learning Platform Redesign Plan
 
-**Status:** planned, not implemented (except Appendix A, which is done but uncommitted)
-**Date:** 2026-10-16
-**Scope:** learning module (Python + SQL tracks), sandbox architecture, dataset system, MySQL removal, learning frontend.
+**Status:** phase paths, Scratch workspaces, and two-module Code Quest navigation are implemented. This document keeps the design history; `README.md` and `code-quest-workspaces.md` describe the current shipped behavior.
+**Date:** updated 2026-10-29
+**Scope:** learning module (Python + SQL tracks), sandbox architecture, dataset system, learning frontend.
 
 The implementation specification for separate learner-owned Python and SQL Scratch workspaces is in [code-quest-workspaces.md](code-quest-workspaces.md). That document is the current contract for scratch mode; this file remains the broader learning-platform redesign plan.
 
@@ -80,13 +80,13 @@ Measured on this machine (`backend\.venv\Scripts\python.exe`):
 
 ### 4.2 Frontend learning today
 
-- `LearnPage.tsx` — all learn state; `selectLevel` duplicates the unlock rule (`:136`).
-- `LearningWorkspace.tsx` — hardcoded track-id → workbench selection (`:53–54`).
-- `ChallengeExplorer.tsx` — groups by difficulty tier, not stage (`:35–46`); index-based lock (`:81`).
-- `SqlWorkbench.tsx` — `isMySQLTrack`, curriculum selector, MySQL sandbox labels (`:46–47, :101–121, :189, :199, :330`).
-- `PythonWorkbench.tsx` — 6-line wrapper of `SqlWorkbench`.
-- `LearningOutputPanel.tsx` — Northwind-specific branches (`:61–62, :91`).
-- `types/index.ts` — hardcoded unions `LearningTrackId = "python" | "sql" | "northwind_mysql" | "northwind_python"` (`:12–13`), `language: "python" | "sql"` (`:114`).
+- `LearnPage.tsx` — session, drafts, hints, mutations, and language-module scoping. A `module` prop limits the visible tracks to the selected language; Python and SQL track state and progress IDs stay separate.
+- `codeQuestModules.ts` — shared module definitions for Python, SQL, and the cross-language Case Files project, including canonical Path/Scratch routes and default track IDs.
+- `CodeQuestNav.tsx` — two language-module cards (Python, SQL), each with Path and Scratch tabs, plus a separate Case Files project link. Active state follows the URL.
+- `ChallengeExplorer.tsx` — groups path challenges by the optional phase `stage` metadata first, then by phase. Tracks without stages keep the existing tier/phase grouping.
+- `SqlWorkbench.tsx` — shared challenge workbench composition despite the SQL-oriented filename. It receives only the current module's tracks and totals, rather than every Python and SQL track.
+- `LearningOutputPanel.tsx` — shared result, hints, review, and capstone presentation.
+- `types/index.ts` — track IDs are strings; track languages include `python`, `sql`, and `mixed`; phases carry optional `stage` metadata.
 
 ---
 
@@ -162,6 +162,19 @@ Challenge = {
 - A phase unlocks when the previous phase's checkpoint is cleared (or `min_percent` of its challenges + checkpoint — tune in slice 4).
 - **Unlock is computed server-side** and shipped in the session payload; the frontend only renders lock states (removes the duplicated rule in `LearnPage.tsx:136` and `ChallengeExplorer.tsx:81`).
 - After each phase: a short **review set** (see §9) and the **phase checkpoint**.
+
+---
+
+### 5.4 Code Quest navigation
+
+Code Quest exposes exactly two language modules. Each module contains its own guided Path and Scratch workspace:
+
+| Module | Path | Scratch |
+|---|---|---|
+| Python | `/learn/python/path` | `/learn/python/scratch` |
+| SQL | `/learn/sql/path` | `/learn/sql/scratch` |
+
+`/learn` redirects to `/learn/python/path`. The old `/learn/scratch/python` and `/learn/scratch/sql` routes redirect to the matching module Scratch route. The hybrid Case Files path stays a single cross-language project at `/learn/case-files`; it does not become a third language module. Python and SQL tracks, execution runners, drafts, progress identities, and workspace lifecycle remain separate.
 
 ---
 
@@ -501,14 +514,17 @@ From the previous review round (all verified, none committed):
 | `backend/python_runner.py` | Real CPython subprocess runner, fixtures, Python ↔ SQLite bridge |
 | `backend/datasets/` | Dataset registry + four deterministic seeded datasets (northwind, streamhub, bookings, reviews) |
 | `backend/curriculum/` | Phase packs, factories, private references, checks, pluggable runners |
-| `backend/curriculum/phases_python.py` | Python path: 14 phases, 70 challenges |
+| `backend/curriculum/phases_python.py` | Python path: 14 phases, 72 challenges, three stage labels |
 | `backend/curriculum/phases_sql.py` | SQL path: 10 phases, 50 challenges |
-| `backend/main.py` | Learning API routes (session/event/solution/answer/code/preview) |
-| `frontend/src/features/learning/LearnPage.tsx` | Learn state, drafts, hints, mutations |
-| `frontend/src/features/learning/components/SqlWorkbench.tsx` | Single workbench (runner-driven labels, no MySQL branches) |
-| `frontend/src/features/learning/components/ChallengeExplorer.tsx` | Phase-grouped explorer for path tracks, tier groups for legacy |
+| `backend/curriculum/phases_case_files.py` | Cross-language Case Files project (SQL + Python) |
+| `backend/main.py` | Learning API routes (session/event/solution/answer/code/preview/scratch) |
+| `frontend/src/features/learning/LearnPage.tsx` | Learn state, drafts, hints, mutations, language-module scoping |
+| `frontend/src/features/learning/codeQuestModules.ts` | Python/SQL module definitions, routes, track scoping |
+| `frontend/src/features/learning/components/SqlWorkbench.tsx` | Shared runner-driven challenge workbench (scoped to one language module) |
+| `frontend/src/features/learning/components/ChallengeExplorer.tsx` | Stage → phase explorer for path tracks; tier groups for legacy |
+| `frontend/src/features/scratch/CodeQuestNav.tsx` | Two language modules with Path/Scratch plus Case Files project link |
 | `frontend/src/features/learning/components/SchemaNavigator.tsx` | Dataset explorer fed by `session.datasets` |
-| `frontend/src/types/index.ts` | Learning types generalized (track ids are strings) |
+| `frontend/src/types/index.ts` | Learning types generalized (track ids are strings, phases may carry a stage) |
 | `structure.txt`, `run.txt`, `README.md` | Docs regenerated/updated |
 
 MySQL integration files (`backend/northwind.py`, `backend/northwind_curriculum.py`, `backend/mysql/`, `northwind.sql`, `docker-compose.northwind.yml`, `.env.northwind.example`) were deleted; Northwind now ships as a dataset.

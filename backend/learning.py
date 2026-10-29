@@ -604,6 +604,7 @@ def _public_tracks() -> list[dict]:
             "curriculum_id": track.get("curriculum_id", "legacy"),
             "name": track["name"],
             "summary": track["summary"],
+            "language": "python" if track_id == "python" else "sql",
             "challenges": [
                 {
                     "id": challenge.get("id", f"{track_id}:{index}"),

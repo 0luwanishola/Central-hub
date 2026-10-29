@@ -143,11 +143,14 @@
 
   ### 5.3 Code Quest
 
-  Code Quest is the educational component of the application. It currently contains two phase-based learning paths and retained Foundations challenge content:
+  Code Quest is organized into two language modules, **Python** and **SQL**. Each module has a **Path** for guided challenges and a **Scratch** workspace for independent work. The hybrid **Case Files** project is linked from the Code Quest area as a cross-language project, not as a third language module.
 
-  - **Python Path** — 14 phases from the first `print()` through files, classes, tests, and a read-only SQLite bridge. Early phases run in a guided interpreter for instant, safe feedback; later phases run real CPython in an isolated subprocess.
+  - **Python Path** — 14 phases and 72 challenges grouped into three stages: **Python Foundations** (phases 1–6), **Practical Python** (phases 7–9), and **Python Engineering** (phases 10–14). The path runs from the first `print()` through collections, functions, modules and imports, files with `pathlib`, CSV/JSON reports, error handling, classes, a read-only SQLite bridge, algorithms, testing/refactoring, and capstones. Early phases run in a guided interpreter for instant, safe feedback; later phases run real CPython in an isolated subprocess.
   - **SQL Path** — 10 phases from `SELECT` through joins, subqueries, window functions, schema design, cleaning, and performance work. Read-only phases query sandboxed SQLite databases; advanced phases add a disposable scratch database for schema and `UPDATE` lessons.
-  - **Foundations challenge content** — earlier Python and SQL material remains available with its original progression and grading behavior.
+  - **Foundations challenge content** — earlier Python and SQL material remains available inside its language module with its original progression and grading behavior.
+  - **Case Files** — the hybrid SQL + Python mystery path remains one cross-language project with one canonical route and progress identity at `/learn/case-files`.
+
+  Code Quest routes are language-specific: `/learn/python/path`, `/learn/sql/path`, `/learn/python/scratch`, and `/learn/sql/scratch`. The old `/learn`, `/learn/scratch/python`, and `/learn/scratch/sql` URLs redirect to the matching module. Python and SQL keep separate challenge content, progress keys, runners, drafts, and workspace behavior.
 
   All sandboxes use SQLite through Python standard library; no separate database server or driver is required. The shared registry in `backend/datasets/` includes Northwind, StreamHub, Bookings, Reviews, and the StreamHub Case File dataset:
 
@@ -169,8 +172,8 @@
 
   **Scratch workspaces.** Code Quest also has learner-owned Scratch workspaces for running your own ideas outside challenge grading:
 
-  - **Python Scratch** (`/learn/scratch/python`) runs the complete editor buffer in a fresh isolated CPython subprocess on every run. Limits are server-owned: 5,000 source characters, 5-second timeout, 20,000 stdout/stderr characters, and up to 10 UTF-8 text files (64 KiB per file, 256 KiB total). Runs return structured diagnostics and never grade, award XP, open hints, or touch challenge progress.
-  - **SQL Scratch** (`/learn/scratch/sql`) uses a persistent, disposable SQLite workspace. Create a blank database or a copy of a registered dataset (`small` tier only), run multi-statement scripts atomically, then reset or delete the workspace. Each browser tracks one active workspace token; the server caps a learner at three active workspaces and expires idle workspaces after 60 minutes.
+  - **Python Scratch** (`/learn/python/scratch`) runs the complete editor buffer in a fresh isolated CPython subprocess on every run. Limits are server-owned: 5,000 source characters, 5-second timeout, 20,000 stdout/stderr characters, and up to 10 UTF-8 text files (64 KiB per file, 256 KiB total). Runs return structured diagnostics and never grade, award XP, open hints, or touch challenge progress.
+  - **SQL Scratch** (`/learn/sql/scratch`) uses a persistent, disposable SQLite workspace. Create a blank database or a copy of a registered dataset (`small` tier only), run multi-statement scripts atomically, then reset or delete the workspace. Each browser tracks one active workspace token; the server caps a learner at three active workspaces and expires idle workspaces after 60 minutes.
 
   Scratch editor drafts live in browser storage under versioned keys and stay separate from challenge drafts. SQL workspace files live under a server-owned temporary root (override with `CQ_SCRATCH_SQL_ROOT`) and are removed on startup and idle expiry. Scratch endpoints never call challenge grading and store no source, SQL, results, or generated files in the learning database. This is a local/trusted-use feature, not a public untrusted-code service. See [code-quest-workspaces.md](code-quest-workspaces.md) for the full contract.
 

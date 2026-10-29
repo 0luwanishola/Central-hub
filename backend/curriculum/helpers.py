@@ -65,8 +65,19 @@ def challenge(
     return item
 
 
-def phase(id: str, name: str, arc: str, summary: str, challenges: list[dict]) -> dict:
-    return {"id": id, "name": name, "arc": arc, "summary": summary, "challenges": challenges}
+def phase(
+    id: str,
+    name: str,
+    arc: str,
+    summary: str,
+    challenges: list[dict],
+    *,
+    stage: Optional[str] = None,
+) -> dict:
+    item = {"id": id, "name": name, "arc": arc, "summary": summary, "challenges": challenges}
+    if stage:
+        item["stage"] = stage
+    return item
 
 
 def path(id: str, name: str, summary: str, language: str, phases: list[dict]) -> dict:

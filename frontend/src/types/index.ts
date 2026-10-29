@@ -63,6 +63,7 @@ export type LearningPhase = {
   name: string;
   arc: string;
   summary: string;
+  stage?: string;
 };
 
 export type LearningTrack = {

@@ -1,9 +1,10 @@
 import { useEffect, useState, type KeyboardEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LEARNING_SESSION_QUERY_KEY, LEARNING_REVIEW_QUERY_KEY, startLearningSession, submitLearningCode, previewLearningCode, recordLearningEvent, getLearningSolution, getLearningReview } from "../../services/apiClient";
-import type { LearningSession, LearningTrackId, LearningCodeResult, LearningSolution, LearningReviewItem } from "../../types";
+import type { LearningSession, LearningTrack, LearningTrackId, LearningCodeResult, LearningSolution, LearningReviewItem } from "../../types";
 import { SqlWorkbench } from "./components/SqlWorkbench";
 import { CodeQuestNav } from "../scratch/CodeQuestNav";
+import { defaultTrackForModule, getCodeQuestModule, tracksForModule, type CodeQuestModuleId } from "./codeQuestModules";
 
 function draftKey(learnerId: string, trackId: LearningTrackId, level: number) {
   return `central-hub:code-draft:v1:${learnerId}:${trackId}:${level}`;
@@ -23,8 +24,9 @@ function nextAvailableLevel(completed: number[], total: number): number {
   return Math.min(next, total - 1);
 }
 
-export function LearnPage() {
+export function LearnPage({ module = "python" }: { module?: CodeQuestModuleId }) {
   const queryClient = useQueryClient();
+  const moduleInfo = getCodeQuestModule(module);
   const { data: session, isLoading, error } = useQuery({
     queryKey: LEARNING_SESSION_QUERY_KEY,
     queryFn: startLearningSession,
@@ -36,7 +38,7 @@ export function LearnPage() {
     enabled: Boolean(session),
     staleTime: 60_000,
   });
-  const [trackId, setTrackId] = useState<LearningTrackId>("python");
+  const [trackId, setTrackId] = useState<LearningTrackId>(() => moduleInfo.defaultTrackId);
   const [level, setLevel] = useState(0);
   const [code, setCode] = useState("");
   const [resetSnapshot, setResetSnapshot] = useState<string | null>(null);
@@ -70,20 +72,34 @@ export function LearnPage() {
     },
   });
 
-  const track = session?.tracks.find((item) => item.id === trackId);
+  const moduleTracks: LearningTrack[] = session ? tracksForModule(session.tracks, module) : [];
+  const track = moduleTracks.find((item) => item.id === trackId)
+    ?? (session ? defaultTrackForModule(session.tracks, module) : undefined)
+    ?? moduleTracks[0];
+  const activeTrackId = track?.id ?? trackId;
   const challenge = track?.challenges[level];
-  const completed = session?.progress[trackId] ?? [];
+  const completed = session?.progress[activeTrackId] ?? [];
   const result = codeMutation.data ?? null;
   const isCleared = completed.includes(level);
   const isFinished = track !== undefined && completed.length === track.challenges.length;
+  const moduleTrackIds = new Set(moduleTracks.map((item) => item.id));
+  const reviewItems = (review?.items ?? []).filter((item) => moduleTrackIds.has(item.track));
 
   useEffect(() => {
-    if (session) setLevel(nextAvailableLevel(session.progress[trackId] ?? [], track?.challenges.length ?? 1));
-  }, [session?.learner_id]);
+    if (!session) return;
+    const available = tracksForModule(session.tracks, module);
+    if (available.length === 0 || available.some((item) => item.id === trackId)) return;
+    const nextTrack = defaultTrackForModule(session.tracks, module) ?? available[0];
+    setTrackId(nextTrack.id);
+  }, [session?.learner_id, module]);
+
+  useEffect(() => {
+    if (session && track) setLevel(nextAvailableLevel(session.progress[activeTrackId] ?? [], track.challenges.length));
+  }, [session?.learner_id, module]);
 
   useEffect(() => {
     if (!challenge) return;
-    const draft = readDraft(draftKey(session?.learner_id ?? "", trackId, level), challenge.coding.starter_code);
+    const draft = readDraft(draftKey(session?.learner_id ?? "", activeTrackId, level), challenge.coding.starter_code);
     setCode(draft.code);
     setDraftStorageAvailable(draft.storageAvailable);
     setDraftDirty(false);
@@ -94,7 +110,7 @@ export function LearnPage() {
     setPortfolioValidation("");
     setSolution(null);
     codeMutation.reset();
-  }, [trackId, level, session?.learner_id]);
+  }, [activeTrackId, level, session?.learner_id]);
 
   useEffect(() => {
     if (!draftDirty) return;
@@ -112,7 +128,7 @@ export function LearnPage() {
     if (codeMutation.data || codeMutation.error) codeMutation.reset();
     if (!session) return;
     try {
-      localStorage.setItem(draftKey(session.learner_id, trackId, level), value);
+      localStorage.setItem(draftKey(session.learner_id, activeTrackId, level), value);
       setDraftStorageAvailable(true);
       setDraftDirty(false);
     } catch {
@@ -144,12 +160,12 @@ export function LearnPage() {
   function checkCode() {
     if (!session || !track || !challenge || codeMutation.isPending) return;
     setPreviewResult(null);
-    codeMutation.mutate({ learner_id: session.learner_id, track: trackId, level, code });
+    codeMutation.mutate({ learner_id: session.learner_id, track: activeTrackId, level, code });
   }
 
   function previewCode() {
     if (!session || !track || !challenge || previewMutation.isPending || codeMutation.isPending) return;
-    previewMutation.mutate({ learner_id: session.learner_id, track: trackId, level, code });
+    previewMutation.mutate({ learner_id: session.learner_id, track: activeTrackId, level, code });
   }
 
   function resetStarterCode() {
@@ -239,7 +255,7 @@ export function LearnPage() {
   async function loadSolution() {
     if (!session || !challenge || !isCleared) return;
     try {
-      const answer = await getLearningSolution({ learner_id: session.learner_id, track: trackId, challenge_id: challenge.id });
+      const answer = await getLearningSolution({ learner_id: session.learner_id, track: activeTrackId, challenge_id: challenge.id });
       setSolution(answer);
     } catch (error) {
       setSolution({ explanation: error instanceof Error ? error.message : "Solution could not be loaded.", code: "", language: challenge.coding.language });
@@ -294,7 +310,10 @@ export function LearnPage() {
       <CodeQuestNav />
       <SqlWorkbench
         session={session}
-        trackId={trackId}
+        tracks={moduleTracks}
+        moduleTitle={moduleInfo.title}
+        moduleEyebrow={moduleInfo.eyebrow}
+        trackId={activeTrackId}
         challenge={challenge}
         code={code}
         onCodeChange={updateCode}
@@ -331,7 +350,7 @@ export function LearnPage() {
         completed={completed}
         codeMutationPending={codeMutation.isPending}
         previewMutationPending={previewMutation.isPending}
-        reviewItems={review?.items ?? []}
+        reviewItems={reviewItems}
         onOpenReviewItem={openReviewItem}
       />
     </section>

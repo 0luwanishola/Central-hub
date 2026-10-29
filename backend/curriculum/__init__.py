@@ -117,6 +117,7 @@ def public_path_tracks() -> list[dict]:
                         "name": phase["name"],
                         "arc": phase["arc"],
                         "summary": phase["summary"],
+                        **({"stage": phase["stage"]} if phase.get("stage") else {}),
                     }
                     for phase in path["phases"]
                 ],

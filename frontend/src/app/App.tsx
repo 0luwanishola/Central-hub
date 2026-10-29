@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Link, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./AppShell";
 import { CatalogPage } from "../features/catalog/CatalogPage";
 import { SettingsPage } from "../features/settings/SettingsPage";
@@ -24,9 +24,17 @@ export function App() {
           <Route path="category/:categoryId" element={<CatalogPage />} />
           <Route path="activities" element={<ActivitiesPage />} />
           <Route path="notes" element={<NotesPage />} />
-          <Route path="learn" element={<Suspense fallback={scratchLoading}><LearnPage /></Suspense>} />
-          <Route path="learn/scratch/python" element={<Suspense fallback={scratchLoading}><PythonScratchPage /></Suspense>} />
-          <Route path="learn/scratch/sql" element={<Suspense fallback={scratchLoading}><SqlScratchPage /></Suspense>} />
+          <Route path="learn" element={<Navigate to="/learn/python/path" replace />} />
+          <Route path="learn/python" element={<Navigate to="/learn/python/path" replace />} />
+          <Route path="learn/sql" element={<Navigate to="/learn/sql/path" replace />} />
+          <Route path="learn/python/path" element={<Suspense fallback={scratchLoading}><LearnPage key="python-path" module="python" /></Suspense>} />
+          <Route path="learn/sql/path" element={<Suspense fallback={scratchLoading}><LearnPage key="sql-path" module="sql" /></Suspense>} />
+          <Route path="learn/case-files" element={<Suspense fallback={scratchLoading}><LearnPage key="case-files" module="case_files" /></Suspense>} />
+          <Route path="learn/python/scratch" element={<Suspense fallback={scratchLoading}><PythonScratchPage /></Suspense>} />
+          <Route path="learn/sql/scratch" element={<Suspense fallback={scratchLoading}><SqlScratchPage /></Suspense>} />
+          <Route path="learn/scratch/python" element={<Navigate to="/learn/python/scratch" replace />} />
+          <Route path="learn/scratch/sql" element={<Navigate to="/learn/sql/scratch" replace />} />
+          <Route path="learn/challenges" element={<Navigate to="/learn/python/path" replace />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="tool/live-score" element={<LiveScorePage />} />
           <Route path="tool/:toolId" element={<ToolPage />} />

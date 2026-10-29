@@ -64,6 +64,57 @@ export function ChallengeExplorer({
     .map((group) => ({ ...group, challenges: group.challenges.filter(({ item }) => matchesSearch(item, search)) }))
     .filter((group) => group.challenges.length > 0);
 
+  const phaseStages = new Map((track.phases ?? []).map((phase) => [phase.id, phase.stage]));
+  const stageOrder: string[] = [];
+  const stageGroups = new Map<string, ExplorerGroup[]>();
+  for (const group of visibleGroups) {
+    const stage = phaseStages.get(group.key) ?? "";
+    if (!stageGroups.has(stage)) {
+      stageGroups.set(stage, []);
+      stageOrder.push(stage);
+    }
+    stageGroups.get(stage)!.push(group);
+  }
+  const hasStages = stageOrder.some((stage) => stage.length > 0);
+
+  function renderGroup(group: ExplorerGroup) {
+    return (
+      <div key={group.key} className={`explorer-tier ${track.phases?.length ? "explorer-phase" : `explorer-tier-${group.key}`}`}>
+        <div className="explorer-tier-heading">
+          <strong>{group.label}</strong>
+          <span>
+            {group.challenges.filter(({ index }) => completed.includes(index)).length} / {group.challenges.length} cleared
+          </span>
+        </div>
+        {group.arc && <p className="phase-arc">{group.arc}</p>}
+        <div className="explorer-levels">
+          {group.challenges.map(({ item, index }) => {
+            const isComplete = completed.includes(index);
+            const locked = index > completed.length;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={`explorer-level ${index === level ? "explorer-level-active" : ""} ${isComplete ? "explorer-level-complete" : ""} ${locked ? "explorer-level-locked" : ""}`}
+                aria-current={index === level ? "step" : undefined}
+                aria-label={`Challenge ${index + 1}, ${item.title}${isComplete ? ", completed" : locked ? ", locked" : ""}`}
+                aria-disabled={locked || undefined}
+                disabled={locked || codeMutationPending}
+                onClick={() => onSelectLevel(index)}
+                title={item.title}
+              >
+                <span>
+                  {isComplete ? <Icon name="check" /> : locked ? <Icon name="lock" /> : index + 1}
+                </span>
+                <small>{item.title}</small>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <nav className="challenge-explorer" aria-label={`${track.name} challenges`}>
       <div className="explorer-search">
@@ -85,41 +136,22 @@ export function ChallengeExplorer({
       </div>
 
       <div className="explorer-tiers">
-        {visibleGroups.map((group) => (
-          <div key={group.key} className={`explorer-tier ${track.phases?.length ? "explorer-phase" : `explorer-tier-${group.key}`}`}>
-            <div className="explorer-tier-heading">
-              <strong>{group.label}</strong>
-              <span>
-                {group.challenges.filter(({ index }) => completed.includes(index)).length} / {group.challenges.length} cleared
-              </span>
-            </div>
-            {group.arc && <p className="phase-arc">{group.arc}</p>}
-            <div className="explorer-levels">
-              {group.challenges.map(({ item, index }) => {
-                const isComplete = completed.includes(index);
-                const locked = index > completed.length;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`explorer-level ${index === level ? "explorer-level-active" : ""} ${isComplete ? "explorer-level-complete" : ""} ${locked ? "explorer-level-locked" : ""}`}
-                    aria-current={index === level ? "step" : undefined}
-                    aria-label={`Challenge ${index + 1}, ${item.title}${isComplete ? ", completed" : locked ? ", locked" : ""}`}
-                    aria-disabled={locked || undefined}
-                    disabled={locked || codeMutationPending}
-                    onClick={() => onSelectLevel(index)}
-                    title={item.title}
-                  >
-                    <span>
-                      {isComplete ? <Icon name="check" /> : locked ? <Icon name="lock" /> : index + 1}
-                    </span>
-                    <small>{item.title}</small>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
+        {hasStages ? stageOrder.map((stage) => {
+          const stageItems = stageGroups.get(stage) ?? [];
+          const stageChallenges = stageItems.flatMap((group) => group.challenges);
+          const stageCleared = stageChallenges.filter(({ index }) => completed.includes(index)).length;
+          return (
+            <section key={stage || "other"} className="explorer-stage" aria-label={stage || undefined}>
+              {stage && (
+                <div className="explorer-stage-heading">
+                  <strong>{stage}</strong>
+                  <span>{stageCleared} / {stageChallenges.length} cleared</span>
+                </div>
+              )}
+              {stageItems.map(renderGroup)}
+            </section>
+          );
+        }) : visibleGroups.map(renderGroup)}
         {visibleGroups.length === 0 && (
           <p className="schema-empty">No challenges match that search.</p>
         )}

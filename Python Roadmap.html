@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Python Developer Roadmap &mdash; Best Single Resource Per Topic</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <span id="markdown-mermaid" aria-hidden="true" data-config="{&quot;darkModeTheme&quot;:&quot;vscode&quot;,&quot;lightModeTheme&quot;:&quot;vscode&quot;,&quot;maxTextSize&quot;:50000,&quot;clickDrag&quot;:&quot;alt&quot;,&quot;showControls&quot;:&quot;onHoverOrFocus&quot;,&quot;resizable&quot;:true,&quot;maxHeight&quot;:&quot;&quot;}"></span>
+				<h1 id="python-developer-roadmap--best-single-resource-per-topic">Python Developer Roadmap — Best Single Resource Per Topic</h1>
+<h2 id="tldr">TL;DR</h2>
+<ul>
+<li>For a self-taught, ~2-year Python developer targeting an intermediate role, the strongest single-source spine is: <strong>Corey Schafer's Python playlist</strong> (per-topic videos) for Phase 1 language topics, <strong><a href="http://NeetCode.io">NeetCode.io</a> Roadmap + William Fiset (freeCodeCamp)</strong> for DSA, <strong>MIT Missing Semester</strong> for shell, <strong>Corey Schafer + Learn Git Branching</strong> for Git, <strong>TechWorld with Nana</strong> for Docker, and <strong>ByteByteGo + Gaurav Sen + the System Design Primer</strong> for system design.</li>
+<li>Nearly all recommendations are FREE; a small number of resources (Corey Schafer, William Fiset, NeetCode's free tier, Missing Semester, TechWorld with Nana) are legitimately reused across a few adjacent topics because they are independently the best single-topic explainer for each — flagged explicitly below.</li>
+<li>The two highest-stakes topics (Dynamic Programming, System Design) have strong community consensus picks; Music Streaming system design is the single weakest area for a free authoritative video, so two options are given.</li>
+</ul>
+<h2 id="key-findings">Key Findings</h2>
+<ul>
+<li><strong>Corey Schafer</strong> — a software engineer and Python educator with 1,542,864 YouTube subscribers (<a href="http://SocialCounts.org">SocialCounts.org</a>; his own bio states &quot;over 1.5 million YouTube subscribers&quot;) — is the consensus best free source for core Python. His channel makes single-topic videos (variables, functions, LEGB scope, decorators, generators, OOP, context managers), so it legitimately supplies several Phase 1 topics, each as a standalone video rather than one bundled course.</li>
+<li><strong>NeetCode</strong> (roadmap + videos) — run by a former Google software engineer (University of Washington grad), with 1.09M subscribers and ~100M total views (SPEAKRJ, June 2026) — and <strong>William Fiset</strong> (Google Maps engineer and former ACM-ICPC world finalist, whose DSA course is hosted free on freeCodeCamp as an 8-hour tutorial) are the two most-recommended free DSA sources on r/leetcode and r/cscareerquestions.</li>
+<li>For <strong>Dynamic Programming</strong>, community opinion splits between Aditya Verma's playlist (pattern-based) and freeCodeCamp's 5-hour DP course; both are strong, so both are presented.</li>
+<li><strong>System design</strong> consensus: ByteByteGo (Alex Xu) for concepts, Gaurav Sen for deep-dives, and Donne Martin's System Design Primer (GitHub) as the free written backbone — the repo shows 367k stars as of Sept 2026 (GhTrends.dev logged 352,596 stars/56,667 forks as of June 2026); Donne Martin is a former Facebook engineering manager.</li>
+<li><strong>MIT Missing Semester</strong> is the single best free resource for shell/command-line fundamentals; <strong>TechWorld with Nana</strong> (Nana Janashia — a Docker Captain since 2021, plus AWS Container Hero and CNCF Ambassador; channel reached ~1.5M subscribers by August 2026) is the consensus best for Docker.</li>
+</ul>
+<h2 id="details">Details</h2>
+<h3 id="phase-1--programming-foundations-python">PHASE 1 — Programming Foundations (Python)</h3>
+<p><strong>1. Variables &amp; Data Types</strong></p>
+<ul>
+<li>Resource: Corey Schafer — &quot;Python Tutorial for Beginners&quot; (data types videos: integers/floats, strings, lists/tuples/sets, dictionaries)</li>
+<li>URL: <a href="https://www.youtube.com/playlist?list=PLprDVKp2F5g15dX01vra7YKEffSPgwljB">https://www.youtube.com/playlist?list=PLprDVKp2F5g15dX01vra7YKEffSPgwljB</a></li>
+<li>Type: Video</li>
+<li>Why: Corey Schafer (1.5M+ subscribers) is repeatedly cited on r/learnpython as the clearest Python explainer; discrete per-topic videos support mastery-based study.</li>
+<li>Time: ~1–2 hrs for the data-type videos.</li>
+</ul>
+<p><strong>2. Functions (args/kwargs, scope/LEGB, pure functions)</strong></p>
+<ul>
+<li>Resource: Corey Schafer — &quot;Python Tutorial: Variable Scope - Understanding the LEGB rule&quot; + args/kwargs video</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=QVdf0LgmICw">https://www.youtube.com/watch?v=QVdf0LgmICw</a></li>
+<li>Type: Video</li>
+<li>Why: The LEGB video is the single most-referenced explanation of Python scope; pairs with his *args/**kwargs video for full coverage.</li>
+<li>Time: ~40 min.</li>
+</ul>
+<p><strong>3. Conditionals (if/elif/else, truthy/falsy, match/case)</strong></p>
+<ul>
+<li>Resource: Real Python — &quot;Conditional Statements in Python&quot; + official docs for match/case (structural pattern matching tutorial)</li>
+<li>URL: <a href="https://realpython.com/python-conditional-statements/">https://realpython.com/python-conditional-statements/</a></li>
+<li>Type: Article/doc</li>
+<li>Why: Real Python is a high-trust source; match/case is newer (3.10+) so the official structural-pattern-matching tutorial (<a href="https://docs.python.org/3/tutorial/controlflow.html#match-statements">https://docs.python.org/3/tutorial/controlflow.html#match-statements</a>) is the authoritative supplement. FLAG: no single video covers match/case well for intermediates, so an article is the better pick here.</li>
+<li>Time: ~45 min.</li>
+</ul>
+<p><strong>4. Loops (for/while, comprehensions, pitfalls)</strong></p>
+<ul>
+<li>Resource: Corey Schafer — &quot;Python Tutorial: Comprehensions&quot; + mCoding &quot;list/dict comprehension pitfalls&quot;</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=3dt4OGnU5sM">https://www.youtube.com/watch?v=3dt4OGnU5sM</a></li>
+<li>Type: Video</li>
+<li>Why: Comprehensions are the trickiest sub-topic; Corey Schafer's is the standard explainer. FLAG: two resources given because loop pitfalls (late binding in closures) are covered better by mCoding.</li>
+<li>Time: ~30 min.</li>
+</ul>
+<p><strong>5. Exceptions / Error Handling</strong></p>
+<ul>
+<li>Resource: Corey Schafer — &quot;Python Tutorial: Using Try/Except Blocks for Error Handling&quot;</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=NIWwJbo-9_8">https://www.youtube.com/watch?v=NIWwJbo-9_8</a></li>
+<li>Type: Video</li>
+<li>Why: Clear coverage of try/except/else/finally; custom exceptions covered in the official docs tutorial as supplement.</li>
+<li>Time: ~20 min.</li>
+</ul>
+<p><strong>6. Libraries/Modules (imports, stdlib, pip/venv, packaging)</strong></p>
+<ul>
+<li>Resource: Corey Schafer — &quot;Python Tutorial: VENV&quot; + &quot;Pipenv&quot; + Python Packaging User Guide</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=Kg1Yvry_Ydk">https://www.youtube.com/watch?v=Kg1Yvry_Ydk</a> (venv)</li>
+<li>Type: Video + official doc</li>
+<li>Why: venv/pip workflow best shown on video; the official Python Packaging User Guide (<a href="https://packaging.python.org/en/latest/tutorials/packaging-projects/">https://packaging.python.org/en/latest/tutorials/packaging-projects/</a>) is the authoritative packaging reference.</li>
+<li>Time: ~1 hr.</li>
+</ul>
+<p><strong>7. Unit Testing (unittest vs pytest, fixtures, mocking, TDD)</strong></p>
+<ul>
+<li>Resource: Corey Schafer — &quot;Python Tutorial: Unit Testing Your Code with the unittest Module&quot; + official pytest documentation</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=6tNS--WetLI">https://www.youtube.com/watch?v=6tNS--WetLI</a> (unittest) and <a href="https://docs.pytest.org/en/stable/">https://docs.pytest.org/en/stable/</a></li>
+<li>Type: Video + official doc</li>
+<li>Why: Corey Schafer's unittest video is the standard intro; pytest official docs (with fixtures/monkeypatch) are the community-preferred deep reference (r/learnpython overwhelmingly recommends pytest over unittest for real work).</li>
+<li>Time: ~2 hrs combined.</li>
+</ul>
+<p><strong>8. File I/O (text, CSV, JSON, pathlib)</strong></p>
+<ul>
+<li>Resource: Corey Schafer — &quot;Python Tutorial: File Objects - Reading and Writing to Files&quot; + &quot;Automate the Boring Stuff&quot; ch. on files</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=Uh2ebFW8OYM">https://www.youtube.com/watch?v=Uh2ebFW8OYM</a></li>
+<li>Type: Video</li>
+<li>Why: Covers text file handling clearly; CSV/JSON have dedicated Corey Schafer videos, pathlib covered in Real Python's pathlib guide (<a href="https://realpython.com/python-pathlib/">https://realpython.com/python-pathlib/</a>).</li>
+<li>Time: ~40 min.</li>
+</ul>
+<p><strong>9. Regular Expressions</strong></p>
+<ul>
+<li>Resource: Real Python — &quot;Regular Expressions: Regexes in Python&quot; (Parts 1–2) + Corey Schafer regex video</li>
+<li>URL: <a href="https://realpython.com/regex-python/">https://realpython.com/regex-python/</a></li>
+<li>Type: Article (+ video option)</li>
+<li>Why: Real Python's two-part regex guide is comprehensive on groups and greedy/lazy matching; Corey Schafer's &quot;Python Tutorial: re Module&quot; video (<a href="https://www.youtube.com/watch?v=K8L6KVGG-7o">https://www.youtube.com/watch?v=K8L6KVGG-7o</a>) is the best video alternative and is frequently the top r/learnpython recommendation for regex.</li>
+<li>Time: ~1.5 hrs.</li>
+</ul>
+<p><strong>10. OOP — Classes &amp; Objects</strong></p>
+<ul>
+<li>Resource: Corey Schafer — &quot;Python OOP Tutorials&quot; (Part 1: Classes and Instances; dunder methods episode)</li>
+<li>URL: <a href="https://www.youtube.com/playlist?list=PL-osiE80TeTsqhIuOqKhwlXsIBIdSeYtc">https://www.youtube.com/playlist?list=PL-osiE80TeTsqhIuOqKhwlXsIBIdSeYtc</a></li>
+<li>Type: Video</li>
+<li>Why: Corey Schafer's 6-part OOP series is the single most-recommended free OOP resource on r/learnpython. FLAG: this playlist also covers topic 11 (inheritance) — but each is a separate video, so classes (Parts 1–2, 5) and inheritance (Part 4) are distinct single-topic videos within it.</li>
+<li>Time: ~1 hr for classes videos.</li>
+</ul>
+<p><strong>11. OOP — Inheritance &amp; Polymorphism (super(), MRO, duck typing, ABCs)</strong></p>
+<ul>
+<li>Resource: Corey Schafer OOP Part 4 (Inheritance) + ArjanCodes on ABCs/duck typing</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=RSl87lqOXDE">https://www.youtube.com/watch?v=RSl87lqOXDE</a></li>
+<li>Type: Video</li>
+<li>Why: Corey Schafer Part 4 covers inheritance/super()/polymorphism; ArjanCodes supplements with ABCs and Pythonic duck typing. FLAG: reuse of Corey Schafer playlist justified — inheritance is its own dedicated video.</li>
+<li>Time: ~30 min + ArjanCodes ~20 min.</li>
+</ul>
+<p><strong>12. Decorators &amp; Closures (functools.wraps, nonlocal)</strong></p>
+<ul>
+<li>Resource: Corey Schafer — &quot;Python Tutorial: Decorators&quot; + mCoding &quot;closures/nonlocal&quot;</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=FsAPt_9Bf3U">https://www.youtube.com/watch?v=FsAPt_9Bf3U</a></li>
+<li>Type: Video</li>
+<li>Why: Corey Schafer's decorators video (with closures build-up and functools.wraps) is the canonical explainer; mCoding for deeper closure/nonlocal nuance.</li>
+<li>Time: ~40 min.</li>
+</ul>
+<p><strong>13. Generators &amp; Iterators (yield, iterator protocol, lazy evaluation)</strong></p>
+<ul>
+<li>Resource: Corey Schafer — &quot;Python Tutorial: Generators&quot; + mCoding on the iterator protocol</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=bD05uGo_sVI">https://www.youtube.com/watch?v=bD05uGo_sVI</a></li>
+<li>Type: Video</li>
+<li>Why: Corey Schafer's generators video is the standard intro to yield/lazy evaluation; mCoding (&quot;How to make an iterator in Python&quot;) is the best deep single-topic video on <strong>iter</strong>/<strong>next</strong>.</li>
+<li>Time: ~30 min.</li>
+</ul>
+<p><strong>14. Context Managers (with, <strong>enter</strong>/<strong>exit</strong>, contextlib)</strong></p>
+<ul>
+<li>Resource: Corey Schafer — &quot;Python Tutorial: Context Managers - Efficiently Managing Resources&quot;</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=-aKFBoZpiqA">https://www.youtube.com/watch?v=-aKFBoZpiqA</a></li>
+<li>Type: Video</li>
+<li>Why: The single most-cited free video specifically on context managers, covering both class-based and contextlib approaches.</li>
+<li>Time: ~20 min.</li>
+</ul>
+<h3 id="phase-1b--data-structures--algorithms">PHASE 1b — Data Structures &amp; Algorithms</h3>
+<p><strong>1. Complexity / Big-O Thinking</strong></p>
+<ul>
+<li>Resource: MIT 6.006 (Spring 2020) Lecture 1–2 + NeetCode Big-O video</li>
+<li>URL: <a href="https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/">https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/</a></li>
+<li>Type: Course/video</li>
+<li>Why: MIT 6.006 (Erik Demaine/Jason Ku) is the gold-standard free algorithms course; for a lighter interview intro, NeetCode's Big-O video is the fastest pick.</li>
+<li>Time: 2 lectures ~2.5 hrs.</li>
+</ul>
+<p><strong>2. Arrays &amp; Strings</strong></p>
+<ul>
+<li>Resource: <a href="http://NeetCode.io">NeetCode.io</a> Roadmap — Arrays &amp; Hashing section (videos + problems)</li>
+<li>URL: <a href="https://neetcode.io/roadmap">https://neetcode.io/roadmap</a></li>
+<li>Type: Course/video</li>
+<li>Why: NeetCode's roadmap is the single most-recommended free interview DSA path on r/leetcode; the Arrays &amp; Hashing section teaches two-pointer/sliding-window string techniques.</li>
+<li>Time: ~8–10 hrs.</li>
+</ul>
+<p><strong>3. Linked Lists</strong></p>
+<ul>
+<li>Resource: William Fiset — Data Structures playlist (Linked List section)</li>
+<li>URL: <a href="https://www.youtube.com/playlist?list=PLDV1Zeh2NRsB6SWUrDFW2RmDotAfPbeHu">https://www.youtube.com/playlist?list=PLDV1Zeh2NRsB6SWUrDFW2RmDotAfPbeHu</a></li>
+<li>Type: Video</li>
+<li>Why: William Fiset (Google Maps engineer, former ACM-ICPC world finalist) has the most rigorous free data-structures playlist; the linked-list videos cover singly/doubly with animated implementations. FLAG: this playlist is reused for several DSA data-structure topics because each structure has its own dedicated video(s).</li>
+<li>Time: ~40 min.</li>
+</ul>
+<p><strong>4. Stacks (incl. monotonic stack)</strong></p>
+<ul>
+<li>Resource: William Fiset Data Structures playlist (Stack) + NeetCode monotonic stack video</li>
+<li>URL: <a href="https://www.youtube.com/playlist?list=PLDV1Zeh2NRsB6SWUrDFW2RmDotAfPbeHu">https://www.youtube.com/playlist?list=PLDV1Zeh2NRsB6SWUrDFW2RmDotAfPbeHu</a></li>
+<li>Type: Video</li>
+<li>Why: Fiset for the ADT fundamentals; NeetCode for the interview-specific monotonic-stack pattern (not covered in generic playlists).</li>
+<li>Time: ~30 min + NeetCode ~20 min.</li>
+</ul>
+<p><strong>5. Queues (deques, circular queues)</strong></p>
+<ul>
+<li>Resource: William Fiset Data Structures playlist (Queue section)</li>
+<li>URL: <a href="https://www.youtube.com/playlist?list=PLDV1Zeh2NRsB6SWUrDFW2RmDotAfPbeHu">https://www.youtube.com/playlist?list=PLDV1Zeh2NRsB6SWUrDFW2RmDotAfPbeHu</a></li>
+<li>Type: Video</li>
+<li>Why: Same rigorous Fiset series; queue/deque videos cover circular-buffer implementation.</li>
+<li>Time: ~25 min.</li>
+</ul>
+<p><strong>6. Hash Maps &amp; Hash Sets</strong></p>
+<ul>
+<li>Resource: William Fiset Data Structures playlist (Hash Table section)</li>
+<li>URL: <a href="https://www.youtube.com/playlist?list=PLDV1Zeh2NRsB6SWUrDFW2RmDotAfPbeHu">https://www.youtube.com/playlist?list=PLDV1Zeh2NRsB6SWUrDFW2RmDotAfPbeHu</a></li>
+<li>Type: Video</li>
+<li>Why: Fiset's hash-table videos cover separate chaining and open addressing rigorously — deeper than most free sources.</li>
+<li>Time: ~50 min.</li>
+</ul>
+<p><strong>7. Trees (binary trees, BST, traversals)</strong></p>
+<ul>
+<li>Resource: William Fiset Data Structures playlist (Binary Trees &amp; BST section)</li>
+<li>URL: <a href="https://www.youtube.com/playlist?list=PLDV1Zeh2NRsB6SWUrDFW2RmDotAfPbeHu">https://www.youtube.com/playlist?list=PLDV1Zeh2NRsB6SWUrDFW2RmDotAfPbeHu</a></li>
+<li>Type: Video</li>
+<li>Why: Covers BST operations and all traversal orders with clear animation.</li>
+<li>Time: ~1 hr.</li>
+</ul>
+<p><strong>8. Balanced Trees (AVL, Red-Black — conceptual)</strong></p>
+<ul>
+<li>Resource: William Fiset — AVL tree videos (Data Structures playlist)</li>
+<li>URL: <a href="https://www.youtube.com/playlist?list=PLDV1Zeh2NRsB6SWUrDFW2RmDotAfPbeHu">https://www.youtube.com/playlist?list=PLDV1Zeh2NRsB6SWUrDFW2RmDotAfPbeHu</a></li>
+<li>Type: Video</li>
+<li>Why: Fiset has dedicated AVL insertion/rotation videos — the best free conceptual coverage; Red-Black best supplemented by MIT 6.006's balanced-BST lecture.</li>
+<li>Time: ~45 min.</li>
+</ul>
+<p><strong>9. Heaps / Priority Queues</strong></p>
+<ul>
+<li>Resource: William Fiset — Priority Queue / Heap playlist</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=wptevk0bshY">https://www.youtube.com/watch?v=wptevk0bshY</a></li>
+<li>Type: Video</li>
+<li>Why: Fiset's ~30-min heap series (heap invariant, heapify up/down, binary-heap implementation) is widely reviewed as the clearest visual explanation of heaps.</li>
+<li>Time: ~30 min.</li>
+</ul>
+<p><strong>10. Tries (Prefix Trees)</strong></p>
+<ul>
+<li>Resource: NeetCode — &quot;Implement Trie (Prefix Tree) - Leetcode 208&quot;</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=oobqoCJlHA0">https://www.youtube.com/watch?v=oobqoCJlHA0</a></li>
+<li>Type: Video</li>
+<li>Why: NeetCode (1.09M subscribers, ~100M total views) is the consensus top DSA-interview channel; his trie explanation is the standard reference, paired with a free written solution at <a href="http://neetcode.io">neetcode.io</a>.</li>
+<li>Time: ~20 min.</li>
+</ul>
+<p><strong>11. Graphs — Representation</strong></p>
+<ul>
+<li>Resource: William Fiset — Graph Theory playlist (intro + representation videos)</li>
+<li>URL: <a href="https://www.youtube.com/playlist?list=PLDV1Zeh2NRsDGO4--qE8yH72HFL1Km93P">https://www.youtube.com/playlist?list=PLDV1Zeh2NRsDGO4--qE8yH72HFL1Km93P</a></li>
+<li>Type: Video</li>
+<li>Why: Fiset's Graph Theory playlist is the single most-recommended free graph resource (he's a Google Maps engineer); opening videos cover adjacency list/matrix tradeoffs.</li>
+<li>Time: ~30 min.</li>
+</ul>
+<p><strong>12. Graph Traversal (BFS, DFS)</strong></p>
+<ul>
+<li>Resource: William Fiset — Graph Theory playlist (BFS/DFS videos)</li>
+<li>URL: <a href="https://www.youtube.com/playlist?list=PLDV1Zeh2NRsDGO4--qE8yH72HFL1Km93P">https://www.youtube.com/playlist?list=PLDV1Zeh2NRsDGO4--qE8yH72HFL1Km93P</a></li>
+<li>Type: Video</li>
+<li>Why: Same authoritative playlist; dedicated BFS and DFS videos with grid/graph examples. FLAG: reused across graph topics 11–13 because each algorithm is its own video.</li>
+<li>Time: ~40 min.</li>
+</ul>
+<p><strong>13. Graph Algorithms (Dijkstra, Bellman-Ford, Kruskal/Prim, topological sort)</strong></p>
+<ul>
+<li>Resource: William Fiset — Graph Theory playlist (shortest-path, MST, topsort videos)</li>
+<li>URL: <a href="https://www.youtube.com/playlist?list=PLDV1Zeh2NRsDGO4--qE8yH72HFL1Km93P">https://www.youtube.com/playlist?list=PLDV1Zeh2NRsDGO4--qE8yH72HFL1Km93P</a></li>
+<li>Type: Video</li>
+<li>Why: Fiset covers Dijkstra, Bellman-Ford, Kruskal's, Prim's, and topological sort each in a dedicated video — the most complete free graph-algorithms coverage available.</li>
+<li>Time: ~2.5 hrs.</li>
+</ul>
+<p><strong>14. Recursion &amp; Backtracking</strong></p>
+<ul>
+<li>Resource: NeetCode Roadmap (Backtracking section) + freeCodeCamp recursion video</li>
+<li>URL: <a href="https://neetcode.io/roadmap">https://neetcode.io/roadmap</a></li>
+<li>Type: Video/course</li>
+<li>Why: NeetCode's backtracking videos (subsets, permutations, combinations) teach the decision-tree template that generalizes across interview problems.</li>
+<li>Time: ~2 hrs.</li>
+</ul>
+<p><strong>15. Dynamic Programming (memoization, tabulation, knapsack, LCS, LIS)</strong> — HIGH STAKES</p>
+<ul>
+<li>Resource (Option A): Aditya Verma — Dynamic Programming Playlist</li>
+<li>URL: <a href="https://www.youtube.com/playlist?list=PL_z_8CaSLPWekqhdCPmFohncHwz8TY2Go">https://www.youtube.com/playlist?list=PL_z_8CaSLPWekqhdCPmFohncHwz8TY2Go</a></li>
+<li>Resource (Option B): freeCodeCamp — &quot;Dynamic Programming - Learn to Solve Algorithmic Problems&quot; (5 hrs, by Alvin Zablan)</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=oBt53YbR9Kk">https://www.youtube.com/watch?v=oBt53YbR9Kk</a></li>
+<li>Type: Video</li>
+<li>Why: FLAG — no single universally-agreed best. Aditya Verma is the community favorite for <em>pattern-based</em> DP (knapsack, LCS, LIS families) and is heavily recommended on r/leetcode; freeCodeCamp's course is the best for first-principles memoization→tabulation. Recommend Aditya Verma for interview pattern recognition, freeCodeCamp for conceptual foundation. (Verify the exact Aditya Verma playlist ID by searching &quot;Aditya Verma Dynamic Programming playlist.&quot;)</li>
+<li>Time: 5–12 hrs.</li>
+</ul>
+<p><strong>16. Greedy Algorithms</strong></p>
+<ul>
+<li>Resource: NeetCode Roadmap (Greedy section)</li>
+<li>URL: <a href="https://neetcode.io/roadmap">https://neetcode.io/roadmap</a></li>
+<li>Type: Video/course</li>
+<li>Why: NeetCode's greedy videos (Kadane's, jump game, interval problems) are the interview-calibrated standard.</li>
+<li>Time: ~1.5 hrs.</li>
+</ul>
+<p><strong>17. Sorting Algorithms (merge, quick, heap)</strong></p>
+<ul>
+<li>Resource: Abdul Bari — Sorting Algorithms playlist</li>
+<li>URL: <a href="https://www.youtube.com/playlist?list=PL99hZ39RJtzXOa1SIgYKGNV-4s9Hi2QxF">https://www.youtube.com/playlist?list=PL99hZ39RJtzXOa1SIgYKGNV-4s9Hi2QxF</a></li>
+<li>Type: Video</li>
+<li>Why: Abdul Bari is the most widely-recommended algorithms educator on YouTube (millions of views per video); consensus best for intuitive, diagram-driven merge/quick/heap sort. freeCodeCamp's multi-language sorting article (<a href="https://www.freecodecamp.org/news/sorting-algorithms-explained-with-examples-in-python-java-and-c/">https://www.freecodecamp.org/news/sorting-algorithms-explained-with-examples-in-python-java-and-c/</a>) is the best written supplement.</li>
+<li>Time: ~2 hrs.</li>
+</ul>
+<p><strong>18. Searching Algorithms (binary search variants)</strong></p>
+<ul>
+<li>Resource: NeetCode Binary Search section + William Fiset binary search video</li>
+<li>URL: <a href="https://neetcode.io/roadmap">https://neetcode.io/roadmap</a></li>
+<li>Type: Video</li>
+<li>Why: NeetCode covers the interview binary-search variants (rotated array, search on answer) that generic tutorials miss.</li>
+<li>Time: ~1.5 hrs.</li>
+</ul>
+<p><strong>19. Bit Manipulation</strong></p>
+<ul>
+<li>Resource: Striver (takeUforward) — Bit Manipulation playlist + free notes</li>
+<li>URL: <a href="https://www.youtube.com/playlist?list=PLgUwDviBIf0rnqh8QsJaHyIX7KUiaPUv7">https://www.youtube.com/playlist?list=PLgUwDviBIf0rnqh8QsJaHyIX7KUiaPUv7</a></li>
+<li>Type: Video + article</li>
+<li>Why: Striver (Raj Vikramaditya, ex-Google) runs one of the most popular free DSA courses; the A2Z sheet is a community-consensus interview standard, with free written notes at <a href="http://takeuforward.org/blogs/bit-manipulation">takeuforward.org/blogs/bit-manipulation</a>.</li>
+<li>Time: ~2 hrs.</li>
+</ul>
+<p><strong>20. Union-Find (Disjoint Set)</strong></p>
+<ul>
+<li>Resource: William Fiset — &quot;Union Find [Disjoint Set]&quot; playlist</li>
+<li>URL: <a href="https://www.youtube.com/playlist?list=PLDV1Zeh2NRsBI1C-mR6ZhHTyfoEJWlxvq">https://www.youtube.com/playlist?list=PLDV1Zeh2NRsBI1C-mR6ZhHTyfoEJWlxvq</a></li>
+<li>Type: Video</li>
+<li>Why: Fiset's dedicated Union-Find playlist (intro, union/find, path compression, applications) is the definitive free source, endorsed via his freeCodeCamp-hosted 8-hour course.</li>
+<li>Time: ~45 min.</li>
+</ul>
+<h3 id="phase-2--shell-git--docker">PHASE 2 — Shell, Git &amp; Docker</h3>
+<p><strong>Shell (all 8 sub-topics)</strong></p>
+<ul>
+<li>Resource: MIT &quot;The Missing Semester of Your CS Education&quot; — Lectures 1 (Shell), 2 (Shell Tools &amp; Scripting), 4 (Data Wrangling), 5 (Command-line Environment)</li>
+<li>URL: <a href="https://missing.csail.mit.edu/">https://missing.csail.mit.edu/</a></li>
+<li>Type: Course (video + notes + exercises)</li>
+<li>Why: The single best free resource for shell mastery — covers filesystem navigation, grep/find, permissions, piping/redirection, process management, environment/dotfiles, bash scripting, and SSH across its lectures, each with exercises. FLAG: one course reused across all 8 shell sub-topics — justified because it is independently the best free resource for each, and each sub-topic maps to a distinct lecture/section rather than a bundled single lecture. Supplement permissions/package management with the Linux <code>chmod</code>/<code>apt</code> man pages.</li>
+<li>Time: ~6–8 hrs.</li>
+</ul>
+<p><strong>Git 1. Fundamentals (init/add/commit)</strong></p>
+<ul>
+<li>Resource: Corey Schafer — &quot;Git Tutorial for Beginners: Command-Line Fundamentals&quot;</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=HVsySz-h9r4">https://www.youtube.com/watch?v=HVsySz-h9r4</a></li>
+<li>Type: Video</li>
+<li>Why: The most-recommended free single video for Git basics on r/git; clear command-line focus.</li>
+<li>Time: ~30 min.</li>
+</ul>
+<p><strong>Git 2. Branching &amp; Merging (incl. rebase)</strong> — HIGH STAKES</p>
+<ul>
+<li>Resource: Learn Git Branching (interactive) + Pro Git book ch. 3</li>
+<li>URL: <a href="https://learngitbranching.js.org/">https://learngitbranching.js.org/</a></li>
+<li>Type: Interactive course + book</li>
+<li>Why: Learn Git Branching is the consensus best way to <em>understand</em> branching/merging/rebasing visually (widely praised on r/git and <a href="http://dev.to">dev.to</a>); Pro Git (free official book, <a href="https://git-scm.com/book/en/v2">https://git-scm.com/book/en/v2</a>) ch. 3 is the authoritative written reference.</li>
+<li>Time: ~2 hrs.</li>
+</ul>
+<p><strong>Git 3. Remote Repositories &amp; Collaboration</strong></p>
+<ul>
+<li>Resource: Pro Git book — ch. 2.5 &quot;Working with Remotes&quot; + GitHub docs</li>
+<li>URL: <a href="https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes">https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes</a></li>
+<li>Type: Book/doc</li>
+<li>Why: Pro Git is the official, free, authoritative Git reference; clone/push/pull/fetch clearly explained.</li>
+<li>Time: ~45 min.</li>
+</ul>
+<p><strong>Git 4. Undoing Changes &amp; History (reset/revert/stash)</strong></p>
+<ul>
+<li>Resource: Atlassian Git Tutorials — &quot;Undoing Changes&quot; series</li>
+<li>URL: <a href="https://www.atlassian.com/git/tutorials/undoing-changes">https://www.atlassian.com/git/tutorials/undoing-changes</a></li>
+<li>Type: Article</li>
+<li>Why: Atlassian's undoing-changes guides are the clearest free written explanation of reset vs revert vs stash with diagrams.</li>
+<li>Time: ~40 min.</li>
+</ul>
+<p><strong>Git 5. Pull Requests &amp; Code Review Workflow</strong></p>
+<ul>
+<li>Resource: GitHub Docs — &quot;About pull requests&quot; + &quot;Reviewing changes in pull requests&quot;</li>
+<li>URL: <a href="https://docs.github.com/en/pull-requests">https://docs.github.com/en/pull-requests</a></li>
+<li>Type: Official doc</li>
+<li>Why: The authoritative source for the PR/code-review workflow on the platform Hope will actually use.</li>
+<li>Time: ~30 min.</li>
+</ul>
+<p><strong>Git 6. .gitignore &amp; Repo Hygiene</strong></p>
+<ul>
+<li>Resource: GitHub's gitignore templates repo + &quot;Ignoring files&quot; docs</li>
+<li>URL: <a href="https://github.com/github/gitignore">https://github.com/github/gitignore</a></li>
+<li>Type: Doc/repo</li>
+<li>Why: The canonical source of language-specific .gitignore templates (Python.gitignore) plus GitHub's ignoring-files guide.</li>
+<li>Time: ~15 min.</li>
+</ul>
+<p><strong>Docker 1. Why Containers (containers vs VMs)</strong></p>
+<ul>
+<li>Resource: TechWorld with Nana — &quot;Docker Tutorial for Beginners&quot; (intro sections)</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=3c-iBn73dDE">https://www.youtube.com/watch?v=3c-iBn73dDE</a></li>
+<li>Type: Video</li>
+<li>Why: TechWorld with Nana's 3-hour Docker course is the consensus best free Docker resource (Nana Janashia is a Docker Captain since 2021, plus AWS Container Hero and CNCF Ambassador); the opening covers containers vs VMs clearly. FLAG: this single course covers Docker topics 1–6 — but it is independently the best free resource for each, and each maps to a distinct chapter (containers/images/Dockerfile/volumes/compose/workflow) rather than a rushed single segment.</li>
+<li>Time: ~20 min for intro.</li>
+</ul>
+<p><strong>Docker 2. Images &amp; Containers basics</strong></p>
+<ul>
+<li>Resource: TechWorld with Nana — Docker course (Main Docker Commands / Debugging sections)</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=3c-iBn73dDE">https://www.youtube.com/watch?v=3c-iBn73dDE</a></li>
+<li>Type: Video</li>
+<li>Why: Same course; dedicated segments on working with images and containers.</li>
+<li>Time: ~30 min.</li>
+</ul>
+<p><strong>Docker 3. Writing a Dockerfile</strong></p>
+<ul>
+<li>Resource: TechWorld with Nana — Docker course (Dockerfile section) + official Dockerfile best-practices doc</li>
+<li>URL: <a href="https://docs.docker.com/develop/develop-images/dockerfile_best-practices/">https://docs.docker.com/develop/develop-images/dockerfile_best-practices/</a></li>
+<li>Type: Video + official doc</li>
+<li>Why: Nana for the hands-on build; the official best-practices doc for production-grade layering/caching.</li>
+<li>Time: ~40 min.</li>
+</ul>
+<p><strong>Docker 4. Volumes &amp; Networking</strong></p>
+<ul>
+<li>Resource: TechWorld with Nana — Docker course (Volumes &amp; Networking sections)</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=3c-iBn73dDE">https://www.youtube.com/watch?v=3c-iBn73dDE</a></li>
+<li>Type: Video</li>
+<li>Why: Nana's volumes/networking demos are frequently cited (on Medium) as the clearest free explanation of Docker persistence.</li>
+<li>Time: ~30 min.</li>
+</ul>
+<p><strong>Docker 5. Docker Compose</strong></p>
+<ul>
+<li>Resource: TechWorld with Nana — &quot;Docker Compose Tutorial&quot; (standalone video)</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=SXwC9fSwct8">https://www.youtube.com/watch?v=SXwC9fSwct8</a></li>
+<li>Type: Video</li>
+<li>Why: Nana's dedicated Compose video is the standard free single-topic resource.</li>
+<li>Time: ~1 hr.</li>
+</ul>
+<p><strong>Docker 6. Practical Workflow (Docker Hub, best practices)</strong></p>
+<ul>
+<li>Resource: TechWorld with Nana — Docker course (Private Repository / Deploy sections) + Docker docs</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=3c-iBn73dDE">https://www.youtube.com/watch?v=3c-iBn73dDE</a></li>
+<li>Type: Video + doc</li>
+<li>Why: Covers pushing to registries and deployment workflow end-to-end.</li>
+<li>Time: ~30 min.</li>
+</ul>
+<h3 id="phase-3--system-design-intermediate-interview-readiness">PHASE 3 — System Design (intermediate interview readiness)</h3>
+<p><strong>Backbone reference (all concept topics):</strong> The System Design Primer (Donne Martin, former Facebook engineering manager; GitHub repo shows 367k stars as of Sept 2026 — GhTrends.dev logged 352,596 stars/56,667 forks as of June 2026) — <a href="https://github.com/donnemartin/system-design-primer">https://github.com/donnemartin/system-design-primer</a> — the free written gold standard; and Alex Xu's ByteByteGo free 158-page PDF + articles. Concept topics below cite the single best resource for each.</p>
+<p><strong>1. Client-Server Model &amp; Networking Basics (HTTP/HTTPS, DNS, TCP vs UDP)</strong></p>
+<ul>
+<li>Resource: Hussein Nasser — &quot;Backend Engineering&quot; YouTube (OSI, TCP vs UDP, HTTP crash courses)</li>
+<li>URL: <a href="https://www.youtube.com/c/husseinnasser">https://www.youtube.com/c/husseinnasser</a></li>
+<li>Type: Video</li>
+<li>Why: Hussein Nasser — a backend engineer with two decades of experience (his own statement, X, Apr 2026: &quot;Early in my career, 20 years ago, I built backend and database applications&quot;), author of &quot;Root Cause: Stories and Lessons from Two Decades of Backend Engineering Bugs,&quot; and an engineer at Esri — is the consensus best free source for networking fundamentals for backend engineers; dedicated crash-course videos for TCP/UDP, HTTP, TLS, DNS.</li>
+<li>Time: ~2 hrs.</li>
+</ul>
+<p><strong>2. Scalability Fundamentals (vertical/horizontal, load balancing)</strong></p>
+<ul>
+<li>Resource: ByteByteGo — &quot;Scale From Zero To Millions Of Users&quot; (free chapter/video)</li>
+<li>URL: <a href="https://bytebytego.com/courses/system-design-interview/scale-from-zero-to-millions-of-users">https://bytebytego.com/courses/system-design-interview/scale-from-zero-to-millions-of-users</a></li>
+<li>Type: Article/video</li>
+<li>Why: Alex Xu's scaling-progression chapter is the single clearest walkthrough of how a system evolves from one server to load-balanced horizontal scale.</li>
+<li>Time: ~45 min.</li>
+</ul>
+<p><strong>3. Databases at Scale (SQL vs NoSQL, indexing, replication, sharding)</strong></p>
+<ul>
+<li>Resource: Hussein Nasser — Database engineering videos (sharding, partitioning, indexing crash courses)</li>
+<li>URL: <a href="https://www.youtube.com/c/husseinnasser">https://www.youtube.com/c/husseinnasser</a></li>
+<li>Type: Video</li>
+<li>Why: Nasser's Postgres-based sharding/partitioning/indexing crash courses are the most practical free deep-dives; supplement with System Design Primer's database section.</li>
+<li>Time: ~2 hrs.</li>
+</ul>
+<p><strong>4. Caching (invalidation, Redis-style, CDN caching)</strong></p>
+<ul>
+<li>Resource: System Design Primer cache section + Gaurav Sen &quot;Caching&quot; video</li>
+<li>URL: <a href="https://github.com/donnemartin/system-design-primer#cache">https://github.com/donnemartin/system-design-primer#cache</a></li>
+<li>Type: Article/video</li>
+<li>Why: The Primer cache section covers cache-aside/write-through/invalidation patterns concisely; Gaurav Sen's video adds distributed-cache intuition.</li>
+<li>Time: ~1 hr.</li>
+</ul>
+<p><strong>5. CAP Theorem &amp; Consistency Models</strong></p>
+<ul>
+<li>Resource: Gaurav Sen — &quot;CAP Theorem&quot; video</li>
+<li>URL: <a href="https://www.youtube.com/watch?v=BHqjEjzAicA">https://www.youtube.com/watch?v=BHqjEjzAicA</a></li>
+<li>Type: Video</li>
+<li>Why: Gaurav Sen (ex-Google) is the most-cited free explainer of CAP and consistency tradeoffs on r/cscareerquestions.</li>
+<li>Time: ~15 min.</li>
+</ul>
+<p><strong>6. Message Queues &amp; Async Processing (pub/sub, delivery guarantees)</strong></p>
+<ul>
+<li>Resource: Hussein Nasser — &quot;RabbitMQ Crash Course&quot; + &quot;Apache Kafka Crash Course&quot;</li>
+<li>URL: <a href="https://www.youtube.com/c/husseinnasser">https://www.youtube.com/c/husseinnasser</a></li>
+<li>Type: Video</li>
+<li>Why: Nasser's message-broker crash courses are the best free hands-on coverage of pub/sub and delivery semantics.</li>
+<li>Time: ~1.5 hrs.</li>
+</ul>
+<p><strong>7. API Design (REST, pagination, rate limiting, idempotency)</strong></p>
+<ul>
+<li>Resource: Microsoft REST API Guidelines + ByteByteGo API design articles</li>
+<li>URL: <a href="https://github.com/microsoft/api-guidelines">https://github.com/microsoft/api-guidelines</a></li>
+<li>Type: Article/doc</li>
+<li>Why: The Microsoft REST API Guidelines are the authoritative free reference for pagination/idempotency conventions; ByteByteGo visuals for interview framing.</li>
+<li>Time: ~1 hr.</li>
+</ul>
+<p><strong>8. Consistent Hashing</strong></p>
+<ul>
+<li>Resource: ByteByteGo — &quot;Consistent Hashing&quot; (free article/video); Gaurav Sen dedicated video</li>
+<li>URL: <a href="https://github.com/donnemartin/system-design-primer">https://github.com/donnemartin/system-design-primer</a> (see consistent-hashing section)</li>
+<li>Type: Article/video</li>
+<li>Why: Consistent hashing is a classic interview topic; ByteByteGo's animated explanation is the clearest free single-topic resource; Gaurav Sen also has a strong dedicated video.</li>
+<li>Time: ~30 min.</li>
+</ul>
+<p><strong>9. Real-Time Communication (WebSockets, long polling, push)</strong></p>
+<ul>
+<li>Resource: Hussein Nasser — WebSockets / polling videos + Ably &quot;WebSockets vs long polling&quot; article</li>
+<li>URL: <a href="https://www.youtube.com/c/husseinnasser">https://www.youtube.com/c/husseinnasser</a></li>
+<li>Type: Video/article</li>
+<li>Why: Nasser covers WebSocket internals and load-balancing SSE; Ably's article (<a href="https://ably.com/blog/websockets-vs-long-polling">https://ably.com/blog/websockets-vs-long-polling</a>) is a clear written comparison of real-time transport options.</li>
+<li>Time: ~45 min.</li>
+</ul>
+<p><strong>10. Content Delivery &amp; Media Handling (CDN, video encoding, ABR)</strong></p>
+<ul>
+<li>Resource: ByteByteGo &quot;Design a System Like YouTube&quot; (EP130) + Gaurav Sen video-processing video</li>
+<li>URL: <a href="https://blog.bytebytego.com/p/ep130-design-a-system-like-youtube">https://blog.bytebytego.com/p/ep130-design-a-system-like-youtube</a></li>
+<li>Type: Article/video</li>
+<li>Why: Covers the transcoding pipeline, object storage, and adaptive bitrate streaming — the core of media handling.</li>
+<li>Time: ~45 min.</li>
+</ul>
+<p><strong>11. Search &amp; Recommendation Systems Basics</strong></p>
+<ul>
+<li>Resource: System Design Primer + ByteByteGo &quot;Design Search Autocomplete&quot; (trie-based)</li>
+<li>URL: <a href="https://github.com/donnemartin/system-design-primer">https://github.com/donnemartin/system-design-primer</a></li>
+<li>Type: Article</li>
+<li>Why: Autocomplete/search-indexing best introduced via ByteByteGo's trie-based design; collaborative filtering conceptually covered in the Primer.</li>
+<li>Time: ~45 min.</li>
+</ul>
+<p><strong>12. Microservices vs Monolith</strong></p>
+<ul>
+<li>Resource: Martin Fowler's &quot;MonolithFirst&quot; article + Hussein Nasser &quot;Microservices Explained&quot;</li>
+<li>URL: <a href="https://martinfowler.com/bliki/MonolithFirst.html">https://martinfowler.com/bliki/MonolithFirst.html</a></li>
+<li>Type: Article/video</li>
+<li>Why: Fowler is the authoritative voice on the tradeoff; Nasser's video gives the pros/cons pragmatically.</li>
+<li>Time: ~30 min.</li>
+</ul>
+<p><strong>13. Data Storage Patterns (blob/object vs relational vs key-value)</strong></p>
+<ul>
+<li>Resource: System Design Primer — database/storage section</li>
+<li>URL: <a href="https://github.com/donnemartin/system-design-primer#database">https://github.com/donnemartin/system-design-primer#database</a></li>
+<li>Type: Article</li>
+<li>Why: The Primer's storage comparison is the most concise free reference on choosing storage types.</li>
+<li>Time: ~30 min.</li>
+</ul>
+<p><strong>Applied System Design Case Studies:</strong></p>
+<ul>
+<li><strong>URL Shortener</strong> — Gaurav Sen &quot;Design a URL Shortener&quot; (<a href="https://www.youtube.com/watch?v=JQDHz72OA3c">https://www.youtube.com/watch?v=JQDHz72OA3c</a>) + free systemdesign.one article (<a href="https://systemdesign.one/url-shortening-system-design/">https://systemdesign.one/url-shortening-system-design/</a>). Video: the most-referenced free walkthrough; article for base62/consistent-hashing depth.</li>
+<li><strong>Rate Limiter</strong> — systemdesign.one &quot;Rate Limiting&quot; article (<a href="https://newsletter.systemdesign.one/p/rate-limiting">https://newsletter.systemdesign.one/p/rate-limiting</a>) covering token bucket, leaky bucket, sliding window with tradeoffs; ByteByteGo's rate-limiter chapter (<a href="https://bytebytego.com/courses/system-design-interview/design-a-rate-limiter">https://bytebytego.com/courses/system-design-interview/design-a-rate-limiter</a>) as supplement.</li>
+<li><strong>Notification System</strong> — ByteByteGo &quot;How Does a Typical Push Notification System Work?&quot; free guide (<a href="https://bytebytego.com/guides/how-does-a-typical-push-notification-system-work/">https://bytebytego.com/guides/how-does-a-typical-push-notification-system-work/</a>); fan-out mechanics covered in ByteByteGo's free News Feed chapter (<a href="https://bytebytego.com/courses/system-design-interview/design-a-news-feed-system">https://bytebytego.com/courses/system-design-interview/design-a-news-feed-system</a>). Free video alternative: sudoCODE &quot;Design Notifications System Design&quot; (<a href="https://www.youtube.com/watch?v=e8cX9pQdu7Y">https://www.youtube.com/watch?v=e8cX9pQdu7Y</a>).</li>
+<li><strong>Chat/Messaging (WhatsApp-style)</strong> — Gaurav Sen &quot;WhatsApp System Design: Chat Messaging Systems for Interviews&quot; (<a href="https://www.youtube.com/watch?v=vKbLFO9daU4">https://www.youtube.com/watch?v=vKbLFO9daU4</a>) — part of his flagship free System Design Playlist (26 videos, 7.5M+ combined views); the definitive free chat-design video. ByteByteGo's free chat-app guide (<a href="https://bytebytego.com/guides/how-do-we-design-a-chat-application-like-whatsapp-facebook-messenger-or-discord/">https://bytebytego.com/guides/how-do-we-design-a-chat-application-like-whatsapp-facebook-messenger-or-discord/</a>) is the written companion.</li>
+<li><strong>Video Streaming (Netflix-style)</strong> — Tech Dummies (Narendra L) &quot;NETFLIX System Design&quot; video + ByteByteGo YouTube-design article (EP130) as written supplement.</li>
+<li><strong>Music Streaming (Spotify-style)</strong> — FLAG: weakest area for a single authoritative free video. Option A (recommended primary): <a href="http://AlgoMaster.io">AlgoMaster.io</a> &quot;Design Spotify&quot; free article (<a href="https://blog.algomaster.io/p/design-spotify-system-design-interview">https://blog.algomaster.io/p/design-spotify-system-design-interview</a>), by Ashish Pratap Singh, with concrete scale numbers. Option B: &quot;System Design: Spotify&quot; YouTube walkthrough (<a href="https://www.youtube.com/watch?v=ks-CS41AiQs">https://www.youtube.com/watch?v=ks-CS41AiQs</a>) from a smaller channel. Also free: systemdesign.one Spotify article (<a href="https://newsletter.systemdesign.one/p/spotify-system-design">https://newsletter.systemdesign.one/p/spotify-system-design</a>).</li>
+</ul>
+<h3 id="phase-4--interview-readiness">PHASE 4 — Interview Readiness</h3>
+<p><strong>1. Hard &amp; mixed-pattern LeetCode practice / pattern recognition</strong></p>
+<ul>
+<li>Resource: NeetCode 150 (curated list + video solutions)</li>
+<li>URL: <a href="https://neetcode.io/practice">https://neetcode.io/practice</a></li>
+<li>Type: Course/curated list</li>
+<li>Why: NeetCode 150 expands Blind 75, is organized <em>by pattern</em> (not just topic), and pairs each problem with a high-quality video — the consensus best free curated list on r/leetcode and r/cscareerquestions. Blind 75 (<a href="https://neetcode.io/practice?tab=blind75">https://neetcode.io/practice?tab=blind75</a>) is the leaner alternative for time-constrained prep; it emphasizes representative problems over volume, but note the original list is grouped by topic, not by pattern.</li>
+<li>Time: 7–12 weeks at 3 problems/day for NeetCode 150; ~4–6 weeks for Blind 75.</li>
+</ul>
+<p><strong>2. Technical / mock interview practice (free)</strong></p>
+<ul>
+<li>Resource: Pramp (free peer-to-peer mock interviews)</li>
+<li>URL: <a href="https://www.pramp.com/">https://www.pramp.com/</a></li>
+<li>Type: Platform</li>
+<li>Why: Pramp is the consensus best <em>free</em> mock-interview platform (coding, system design, behavioral); the peer-to-peer credit model gives essentially unlimited free reps (you start with credits and earn more by interviewing others). Pair with <a href="http://interviewing.io">interviewing.io</a> for occasional expert feedback closer to real interviews (mostly paid). LeetCode's built-in mock-interview timer is a free supplement.</li>
+<li>Time: 1–2 sessions/week during active prep.</li>
+</ul>
+<h2 id="recommendations">Recommendations</h2>
+<ol>
+<li><strong>Sequence:</strong> Work Phase 1 → 1b → 2 → 3 → 4 in order; the mastery approach means finishing each topic's resource + exercises before moving on.</li>
+<li><strong>Phase 1 (Python):</strong> Use Corey Schafer as the spine (2–3 weeks), supplementing decorators/generators/iterators with mCoding for depth. Since Hope has ~2 years' experience, she can likely skim topics 1–6 and focus mastery effort on 10–14 (OOP through context managers).</li>
+<li><strong>Phase 1b (DSA):</strong> Learn concepts from William Fiset/NeetCode videos, then immediately drill the matching NeetCode Roadmap problems. Budget the most time for DP — start with freeCodeCamp for concepts, then Aditya Verma for patterns.</li>
+<li><strong>Phase 2:</strong> Missing Semester (1 week), Learn Git Branching + Pro Git (3–4 days), TechWorld with Nana Docker course (3–4 days).</li>
+<li><strong>Phase 3:</strong> Read the System Design Primer end-to-end once, watch ByteByteGo/Gaurav Sen/Hussein Nasser for concepts, then practice the 6 case studies out loud with a whiteboard.</li>
+<li><strong>Phase 4:</strong> Begin NeetCode 150 in parallel with Phase 1b (not after) and start weekly Pramp mocks ~6 weeks before interviewing.</li>
+<li><strong>Benchmarks that change the plan:</strong> If Hope can solve fresh LeetCode mediums in &lt;25 min and articulate the underlying pattern, she should skip ahead in DSA. If Pramp feedback repeatedly flags communication (not correctness), shift time from LeetCode grinding to mock interviews. If a system-design mock reveals she can't do back-of-envelope capacity estimates, prioritize the ByteByteGo scaling chapter before more case studies.</li>
+</ol>
+<h2 id="caveats">Caveats</h2>
+<ul>
+<li><strong>Verify a handful of video IDs by clicking through:</strong> Gaurav Sen (WhatsApp <code>vKbLFO9daU4</code>, CAP <code>BHqjEjzAicA</code>), Tech Dummies Netflix, and the Aditya Verma DP playlist ID were confirmed by title/channel but could not all be independently re-fetched; search the exact titles to lock final URLs.</li>
+<li><strong>Resource reuse is flagged wherever it occurs</strong> (Corey Schafer across Phase 1; William Fiset across DSA data structures/graph topics; Missing Semester across shell; TechWorld with Nana across Docker; Hussein Nasser across several system-design concept topics). In each case the resource is independently the best single-topic explainer for each sub-topic, and each sub-topic maps to a distinct dedicated video/lecture/section rather than one rushed multi-topic segment — this is the justified exception the constraints allow.</li>
+<li><strong>Paid/partly-gated flags:</strong> ByteByteGo's full course chapters are partly subscription-based, but the free guides/blog posts and the System Design Primer cover the same concepts at no cost. AlgoMaster's Spotify article is free to read (deeper premium content is gated). <a href="http://interviewing.io">interviewing.io</a> is mostly paid; Pramp is the free primary. No paid Udemy/Coursera resources were recommended as primaries.</li>
+<li><strong>Currency check:</strong> All picks target Python 3.10+ and current library/tool versions; nothing here is Python 2-era. Still, confirm any video predating ~2021 still matches current syntax before deep study (e.g., f-strings, match/case, pathlib idioms).</li>
+<li><strong>&quot;Best&quot; reflects</strong> community consensus (Reddit r/learnpython, r/leetcode, r/cscareerquestions, r/git, r/docker; <a href="http://dev.to">dev.to</a>; Hacker News) plus credibility signals (instructor background, subscriber/view counts, recency) as of September 2026.</li>
+</ul>
+
+            
+            
+        </body>
+        </html>
