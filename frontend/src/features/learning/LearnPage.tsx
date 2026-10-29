@@ -301,7 +301,7 @@ export function LearnPage({ module }: { module: CodeQuestModuleId }) {
   if (error || !session || !track || !challenge) return (
     <section className="page-wrap learn-page">
       <CodeQuestNav module={module} />
-      <div className="empty-state"><span className="eyebrow">Code Quest unavailable</span><h1>Connect to the learning service.</h1><p>{error instanceof Error ? error.message : "Start the FastAPI backend, then reload this page."}</p></div>
+      <div className="empty-state"><span className="eyebrow">Path unavailable</span><h1>This learning path is unavailable right now.</h1><p>Please try again shortly.</p></div>
     </section>
   );
 

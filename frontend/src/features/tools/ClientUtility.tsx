@@ -14,7 +14,7 @@ export function ClientUtility({ toolId }: { toolId: string }) {
     case "regex-tester": return <RegexUtility />;
     case "color-picker": return <ColorUtility />;
     case "qr-generator": return <QrUtility />;
-    default: return <div className="notice">This browser tool is not configured yet.</div>;
+    default: return <div className="empty-state compact"><h2>Tool unavailable</h2><p>Return to the tool list and choose another tool.</p></div>;
   }
 }
 

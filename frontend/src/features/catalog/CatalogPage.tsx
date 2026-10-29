@@ -70,19 +70,17 @@ export function CatalogPage({ showAll = false }: { showAll?: boolean }) {
   }
 
   if ((showAll || categoryId) && toolsLoading && tools.length === 0) return <section className="page-wrap"><div className="loading-line">Loading your workspace...</div></section>;
-  if ((showAll || categoryId) && toolsError && tools.length === 0) return <section className="page-wrap"><div className="empty-state"><span className="eyebrow">Catalog unavailable</span><h1>Tools will appear here.</h1><p>Start the FastAPI backend, then reload this page.</p></div></section>;
+  if ((showAll || categoryId) && toolsError && tools.length === 0) return <section className="page-wrap"><div className="empty-state"><span className="eyebrow">Tools unavailable</span><h1>Connected tools are temporarily unavailable.</h1><p>Please try again shortly.</p></div></section>;
 
   if (showAll || categoryId) {
     const heading = categoryId ? displayCategory(categoryId) : "Digital tools";
     const description = categoryId ? descriptions[categoryId] ?? "A focused set of tools for everyday tasks." : "Browse quick browser utilities, document tools, and connected services.";
     const query = search ? `?search=${encodeURIComponent(search)}` : "";
-    const availableTools = filteredTools.filter((tool) => tool.ready);
-    const unavailableTools = filteredTools.filter((tool) => !tool.ready);
     return (
       <section className="page-wrap">
         <div className="page-heading-row">
           <div><span className="eyebrow">{categoryId ? "Tool collection" : "Browse and search"}</span><h1>{heading}</h1><p className="muted">{description}</p></div>
-          {categoryId && <div className="heading-stat"><strong>{tools.filter((tool) => tool.category === categoryId && tool.ready).length}</strong><span>ready to use</span></div>}
+          {categoryId && <div className="heading-stat"><strong>{filteredTools.length}</strong><span>{filteredTools.length === 1 ? "tool" : "tools"}</span></div>}
         </div>
         <div className="catalog-controls">
           <nav className="category-pills" aria-label="Filter tools by category">
@@ -92,16 +90,9 @@ export function CatalogPage({ showAll = false }: { showAll?: boolean }) {
           <SearchInput value={search} onChange={updateSearch} />
         </div>
         <p className="catalog-result-count" role="status" aria-live="polite">{filteredTools.length} {filteredTools.length === 1 ? "tool" : "tools"}{search ? ` matching “${search}”` : ""}</p>
-        {filteredTools.length ? <>
-          {availableTools.length > 0 && <section className="catalog-group" aria-labelledby="available-tools-heading">
-            <div className="section-heading catalog-group-heading"><div><span className="eyebrow">Ready to use</span><h2 id="available-tools-heading">Available now</h2></div><span>{availableTools.length}</span></div>
-            <ToolGrid tools={availableTools} />
-          </section>}
-          {unavailableTools.length > 0 && <section className="catalog-group" aria-labelledby="upcoming-tools-heading">
-            <div className="section-heading catalog-group-heading"><div><span className="eyebrow">Not ready yet</span><h2 id="upcoming-tools-heading">Needs setup or development</h2><p>Some tools need an optional program; others are still being built.</p></div><span>{unavailableTools.length}</span></div>
-            <ToolGrid tools={unavailableTools} />
-          </section>}
-        </> : <div className="empty-state compact"><h2>No matching tools</h2><p>Try another search, or choose a different collection.</p>{search && <button className="text-button" type="button" onClick={() => updateSearch("")}>Clear search</button>}</div>}
+        {filteredTools.length
+          ? <ToolGrid tools={filteredTools} />
+          : <div className="empty-state compact"><h2>No matching tools</h2><p>Try another search, or choose a different collection.</p>{search && <button className="text-button" type="button" onClick={() => updateSearch("")}>Clear search</button>}</div>}
       </section>
     );
   }
@@ -132,7 +123,7 @@ export function CatalogPage({ showAll = false }: { showAll?: boolean }) {
           </div>
           {quickTools.length > 0
             ? <ToolGrid tools={quickTools} />
-            : <div className="empty-state compact"><h2>No tools are available yet</h2><p>Start the tool catalog service or choose another part of your workspace.</p></div>}
+            : <div className="empty-state compact"><h2>No tools are available right now</h2><p>Try another part of your workspace.</p></div>}
         </section>
 
         <aside className="home-side-column" aria-label="Learning and personal spaces">
@@ -232,14 +223,12 @@ function ToolGrid({ tools }: { tools: Tool[] }) {
 }
 
 function ToolCard({ tool }: { tool: Tool }) {
-  const availability = tool.ready ? "Ready" : tool.requires ? "Needs setup" : "Planned";
   return (
     <Link to={`/tool/${tool.id}`} className="tool-card" data-category={tool.category} onClick={() => rememberTool(tool.id)}>
       <span className="tool-card-icon"><Icon name={iconForTool(tool.id, tool.category)} /></span>
       <div className="tool-card-content">
-        <div className="tool-card-title"><h3>{tool.name}</h3><span className={`tool-status ${tool.ready ? "status-ready" : "status-soon"}`}>{availability}</span></div>
+        <div className="tool-card-title"><h3>{tool.name}</h3></div>
         <p>{tool.description}</p>
-        {tool.requires && <small>Requires {tool.requires}</small>}
       </div>
       <span className="tool-card-arrow" aria-hidden="true"><Icon name="arrow" /></span>
     </Link>

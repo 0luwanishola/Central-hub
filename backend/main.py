@@ -372,13 +372,15 @@ def _form_int(form, key: str, default: int) -> int:
 
 @app.get("/api/tools")
 async def api_tools(category: Optional[str] = None):
-    # Report availability based on the browser/API handlers used by the app.
+    # Publish only tools that have a working handler. Unreleased catalog entries
+    # stay in the source list and do not appear in the public API.
     response = []
     for tool in TOOLS:
+        if not tool["ready"] or tool["execution"] not in {"client", "api"}:
+            continue
         if category and tool["category"] != category:
             continue
         public_tool = dict(tool)
-        public_tool["ready"] = public_tool["execution"] in {"client", "api"}
         response.append(public_tool)
     return response
 

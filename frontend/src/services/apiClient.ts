@@ -1,8 +1,9 @@
 import type { Fixture, LearningAnswer, LearningCodeResult, LearningSession, LearningSolution, LearningReviewSet, LearningTrackId, PdfDownload, PdfSignPreview, ScratchPythonResult, ScratchSqlRunResult, ScratchSqlWorkspace, Tool } from "../types";
 
-// Use relative URLs in development (proxied by Vite), absolute in production
+// Vite proxies relative API requests in development. Production uses the same
+// origin by default; configure a base URL only when the API is hosted elsewhere.
 const isDev = import.meta.env.DEV;
-const API_BASE_URL = isDev ? "" : (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+const API_BASE_URL = isDev ? "" : (import.meta.env.VITE_API_BASE_URL?.trim() ?? "").replace(/\/+$/, "");
 
 export function apiUrl(path: string): string {
   if (isDev) return path.startsWith("/") ? path : `/${path}`;

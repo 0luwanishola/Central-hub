@@ -337,8 +337,8 @@ export function SqlScratchPage() {
         <CodeQuestNav module="sql" />
         <div className="empty-state">
           <span className="eyebrow">SQL Scratch unavailable</span>
-          <h1>Connect to the learning service.</h1>
-          <p>{sessionError instanceof Error ? sessionError.message : "Start the FastAPI backend, then reload this page."}</p>
+          <h1>This workspace is unavailable right now.</h1>
+          <p>Please try again shortly.</p>
         </div>
       </section>
     );

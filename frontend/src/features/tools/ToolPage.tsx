@@ -12,10 +12,11 @@ export function ToolPage() {
   const { tools, toolsLoading, toolsError } = useOutletContext<AppContext>();
   const queryClient = useQueryClient();
   const tool = tools.find((item) => item.id === toolId);
+  const hasToolScreen = tool?.execution === "client" || tool?.id === "live-score" || (tool?.execution === "api" && tool.category === "pdf");
 
   if (toolsLoading && !tool) return <section className="page-wrap"><div className="loading-line">Loading tool…</div></section>;
-  if (toolsError && !tool) return <section className="page-wrap"><div className="empty-state"><span className="eyebrow">Catalog unavailable</span><h1>We couldn’t load this tool.</h1><p role="alert">{toolsError.message}</p><button className="button button-primary" type="button" onClick={() => void queryClient.invalidateQueries({ queryKey: ["tools"] })}>Try again</button></div></section>;
-  if (!tool) return <section className="page-wrap"><div className="empty-state"><span className="eyebrow">Tool not found</span><h1>We couldn’t find that tool.</h1><Link className="button button-primary" to="/">Back to dashboard</Link></div></section>;
+  if (toolsError && !tool) return <section className="page-wrap"><div className="empty-state"><span className="eyebrow">Tools unavailable</span><h1>We couldn’t load this tool.</h1><p role="alert">Some connected tools are temporarily unavailable. Please try again shortly.</p><button className="button button-primary" type="button" onClick={() => void queryClient.invalidateQueries({ queryKey: ["tools"] })}>Try again</button></div></section>;
+  if (!tool || !tool.ready || !hasToolScreen) return <section className="page-wrap"><div className="empty-state"><span className="eyebrow">Tool not found</span><h1>We couldn’t find that tool.</h1><Link className="button button-primary" to="/">Back to dashboard</Link></div></section>;
 
   return (
     <section className="page-wrap tool-page">
@@ -27,8 +28,6 @@ export function ToolPage() {
       <section className="tool-panel">
         {tool.execution === "client" && <ClientUtility toolId={tool.id} />}
         {tool.execution === "api" && tool.category === "pdf" && (tool.id === "pdf-sign" ? <PdfSignTool key={tool.id} /> : <PdfTool key={tool.id} tool={tool} />)}
-        {!tool.ready && <div className="coming-soon"><Icon name="generators" /><h2>This tool is on its way.</h2><p>{tool.requires ? `It needs ${tool.requires} before it can run.` : "It will be available here as soon as it is ready."}</p></div>}
-        {tool.ready && tool.execution === "api" && tool.category !== "pdf" && <div className="notice">This tool is connected to the API, but does not have a frontend page yet.</div>}
       </section>
     </section>
   );

@@ -243,7 +243,7 @@
 
   - `API_FOOTBALL_KEY` for optional external sports API access,
   - `FRONTEND_ORIGINS` for allowed frontend origins in CORS configuration,
-  - `VITE_API_BASE_URL` for frontend API targeting in local or deployed environments.
+  - `VITE_API_BASE_URL` when the deployed frontend and backend use different origins. If they share an origin, leave it unset and route `/api` to the backend through the web server or reverse proxy. Local Vite development uses its configured proxy.
 
   Sensitive values must remain in local `.env` files and must not be committed to source control.
 

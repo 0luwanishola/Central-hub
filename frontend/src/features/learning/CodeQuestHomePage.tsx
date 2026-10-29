@@ -12,8 +12,8 @@ export function CodeQuestHomePage() {
     <section className="page-wrap code-quest-home">
       <header className="dashboard-heading code-quest-home-heading">
         <span className="eyebrow">Code Quest / Python + SQL</span>
-        <h1>Choose a workspace</h1>
-        <p>Take a guided Path or open Scratch to try an idea. Python and SQL each have their own space.</p>
+        <h1>Learn the Path. Try your own code.</h1>
+        <p>Follow Python or SQL step by step, then use that language’s Scratch space to run an idea of your own.</p>
       </header>
 
       <div className="code-quest-module-grid">
